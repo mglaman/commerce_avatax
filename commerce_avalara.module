@@ -1,0 +1,100 @@
+<?php
+
+/**
+ * @file
+ * AvaTax service integration from Avalara, Inc.
+ */
+
+define('COMMERCE_AVALARA_PRODUCTION_MODE', 'prod');
+define('COMMERCE_AVALARA_DEVELOPMENT_MODE', 'dev');
+
+/**
+ * Implements hook_permission().
+ */
+function commerce_avalara_permission() {
+  return array(
+    'administer avalara' => array(
+      'title' => t('Administer Avalara'),
+      'description' => t('Manage settings for the Avalara Sales Tax'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function commerce_avalara_menu() {
+  $items['admin/commerce/config/avalara'] = array(
+    'title' => 'Avalara ',
+    'description' => 'Avalara Configuration',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('commerce_avalara_credentials_settings_form'),
+    'file' => 'includes/commerce_avalara.admin.inc',
+    'access arguments' => array('administer avalara'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['admin/commerce/config/avalara/credentials'] = array(
+    'title' => 'Credentials',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+
+  return $items;
+}
+
+/**
+ * Returns the API mode.
+ */
+function commerce_avalara_api_mode() {
+  return variable_get('commerce_avalara_api_mode', COMMERCE_AVALARA_DEVELOPMENT_MODE);
+}
+
+/**
+ * Returns the site-wide Avalara username for a given API mode.
+ */
+function commerce_avalara_username($api_mode = COMMERCE_AVALARA_DEVELOPMENT_MODE) {
+  return variable_get('commerce_avalara_' . $api_mode . '_username', '');
+}
+
+/**
+ * Returns the site-wide Avalara password for a given API mode.
+ */
+function commerce_avalara_password($api_mode = COMMERCE_AVALARA_DEVELOPMENT_MODE) {
+  return variable_get('commerce_avalara_' . $api_mode . '_password', '');
+}
+
+/**
+ * Returns a statically cached instance of an Avatax object.
+ *
+ * @param string $auth_key
+ *   The encoded authorization header that is used to authenticate against
+ *   the API.
+ *
+ * @return Avatax|bool.
+ *   The constructed Avatax object or FALSE if the library could not be loaded..
+ */
+function commerce_avalara_object($auth_key = '') {
+  $avalara = &drupal_static(__FUNCTION__);
+
+  // If the auth key wasn't provided,
+  if (!$auth_key) {
+    $api_mode = commerce_avalara_api_mode();
+    $username = commerce_avalara_username($api_mode);
+    $password = commerce_avalara_password($api_mode);
+
+    if (!empty($username) && !empty($password)) {
+      $auth_key = base64_encode("$username:$password");
+    }
+  }
+
+  // If the AUTH key is still empty, return FALSE.
+  if (!$auth_key) {
+    return FALSE;
+  }
+
+  if (!isset($avalara)) {
+    $avalara[$auth_key] = new Avatax($auth_key);
+  }
+
+  return $avalara[$auth_key];
+}

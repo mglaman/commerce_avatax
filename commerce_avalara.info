@@ -1,0 +1,9 @@
+name = AvaTax
+description = Drupal Commerce Connector for AvaTax
+package = Commerce (Tax)
+core = 7.x
+
+configure = admin/commerce/config/avalara
+
+; Identify the Avalara library files.
+files[] = lib/Avalara.php
