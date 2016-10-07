@@ -230,7 +230,7 @@ function commerce_avalara_commerce_price_component_type_info() {
   $components = array();
 
   // Define a generic AvaTax price component type.
-  $components['avatax'] = array(
+  $components['avalara_sales_tax'] = array(
     'title' => t('AvaTax sales tax'),
     'display_title' => variable_get('commerce_avalara_price_component_title', t('Sales tax')),
     'weight' => 25,
