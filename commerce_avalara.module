@@ -53,6 +53,13 @@ function commerce_avalara_menu() {
     'page arguments' => array('commerce_avalara_address_settings_form'),
     'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
   );
+  $items['admin/commerce/config/avalara/general-settings'] = array(
+    'title' => 'General settings',
+    'type' => MENU_LOCAL_TASK,
+    'access arguments' => array('administer avalara'),
+    'page arguments' => array('commerce_avalara_general_settings_form'),
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+  );
 
   return $items;
 }

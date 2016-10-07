@@ -220,3 +220,26 @@ function commerce_avalara_address_settings_form($form, &$form_state) {
 
   return system_settings_form($form);
 }
+
+/**
+ * Builds the Avalara general settings form.
+ */
+function commerce_avalara_general_settings_form($form, &$form_state) {
+  $form['general'] = array(
+    '#title' => t('General settings'),
+    '#type' => 'fieldset',
+  );
+  $form['general']['commerce_avalara_tax_calculation_enabled'] = array(
+    '#title' => t('Enable tax calculation?'),
+    '#type' => 'checkbox',
+    '#default_value' => variable_get('commerce_avalara_tax_calculation_enabled', TRUE),
+  );
+  $form['general']['commerce_avalara_enable_logging'] = array(
+    '#title' => t('Enable logging'),
+    '#type' => 'checkbox',
+    '#description' => t('Enables detailed AvaTax transaction logging.'),
+    '#default_value' => variable_get('commerce_avalara_enable_logging', FALSE),
+  );
+
+  return system_settings_form($form);
+}
