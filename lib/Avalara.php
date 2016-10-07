@@ -20,7 +20,14 @@
  */
 class Avatax {
 
-  const BASE_TEST_URL = 'https://rest-sbx-preview.avalara.net/api/v2/';
+  // Defines the test API url of the REST API V2.
+  const BASE_DEV_URL_V2 = 'https://rest-sbx-preview.avalara.net/api/v2/';
+
+  // Defines the production API url of the REST API V2.
+  const BASE_URL_V2 = 'https://rest-sbx-preview.avalara.net/api/v2/';
+
+  // Defines the base URL of the API.
+  protected $baseUrl;
 
   // The Avalara account number that is used to authenticate against the API.
   protected $accountNumber;
@@ -55,10 +62,43 @@ class Avatax {
     $this->accountNumber = $accountNumber;
     $this->licenseKey = $licenseKey;
     $this->apiMode = $apiMode;
+    $this->setBaseUrl();
 
     // Initialize the cURL handle.
     $this->ch = curl_init();
     $this->setDefaultCurlOptions();
+  }
+
+  /**
+   * Returns the base URL for the API.
+   *
+   * @return string
+   *   The base URL for the API that query parameters will be appended to when
+   *   submitting API requests.
+   */
+  public function baseUrl() {
+    return $this->baseUrl;
+  }
+
+  /**
+   * Sets the API base url.
+   *
+   * @return string
+   *   The base URL for the API that query parameters will be appended to when
+   *   submitting API requests.
+   */
+  public function setBaseUrl($baseUrl = '') {
+    if ($baseUrl) {
+      $this->baseUrl = $baseUrl;
+    }
+    else {
+      if ($this->apiMode == 'dev') {
+        $this->baseUrl = self::BASE_DEV_URL_V2;
+      }
+      else {
+        $this->baseUrl = self::BASE_URL_V2;
+      }
+    }
   }
 
   /**
@@ -90,6 +130,9 @@ class Avatax {
     }
   }
 
+  /**
+   * Tests connectivity and version of the service.
+   */
   public function ping() {
     return $this->doRequest('GET', 'utilities/ping');
   }
@@ -149,7 +192,7 @@ class Avatax {
    *   of returned data.
    */
   protected function doRequest($method, $path, array $fields = array()) {
-    $url = self::BASE_TEST_URL . $path;
+    $url = $this->baseUrl() . $path;
     // Set the request URL and method.
     curl_setopt($this->ch, CURLOPT_URL, $url);
     curl_setopt($this->ch, CURLOPT_CUSTOMREQUEST, $method);
