@@ -10,6 +10,8 @@ define('COMMERCE_AVALARA_DEVELOPMENT_MODE', 'dev');
 // Defines constants for the credentials field names.
 define('COMMERCE_AVALARA_ACCOUNT_NUMBER_FIELD', 'account_number');
 define('COMMERCE_AVALARA_LICENSE_KEY_FIELD', 'license_key');
+define('COMMERCE_AVALARA_COMPANY_CODE_FIELD', 'company_code');
+
 
 /**
  * Implements hook_permission().
@@ -39,10 +41,27 @@ function commerce_avalara_menu() {
   $items['admin/commerce/config/avalara/credentials'] = array(
     'title' => 'Credentials',
     'type' => MENU_DEFAULT_LOCAL_TASK,
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+    'access arguments' => array('administer avalara'),
     'weight' => -10,
+  );
+  $items['admin/commerce/config/avalara/address-validation'] = array(
+    'title' => 'Address validation',
+    'type' => MENU_LOCAL_TASK,
+    'access callback' => 'commerce_avalara_address_validation_access',
+    'access arguments' => array('administer avalara'),
+    'page arguments' => array('commerce_avalara_address_settings_form'),
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
   );
 
   return $items;
+}
+
+/**
+ * Access callback for the address validation tab.
+ */
+function commerce_avalara_address_validation_access($permission) {
+  return module_exists('commerce_shipping') && user_access($permission);
 }
 
 /**
@@ -60,6 +79,16 @@ function commerce_avalara_api_mode() {
  */
 function commerce_avalara_account_number($api_mode = COMMERCE_AVALARA_DEVELOPMENT_MODE) {
   return variable_get('commerce_avalara_' . $api_mode . '_' . COMMERCE_AVALARA_ACCOUNT_NUMBER_FIELD, '');
+}
+
+/**
+ * Returns the site-wide Avalara company code for a given API mode.
+ *
+ * @param string $api_mode
+ *  For which API mode (dev|prod) the company code is requested.
+ */
+function commerce_avalara_company_code($api_mode = COMMERCE_AVALARA_DEVELOPMENT_MODE) {
+  return variable_get('commerce_avalara_' . $api_mode . '_' . COMMERCE_AVALARA_COMPANY_CODE_FIELD, '');
 }
 
 /**

@@ -5,7 +5,7 @@
  */
 
 /**
- * Builds the Avalara settings form.
+ * Builds the Avalara credentials settings form.
  */
 function commerce_avalara_credentials_settings_form($form, &$form_state) {
   form_load_include($form_state, 'inc', 'commerce_avalara', 'includes/commerce_avalara.admin');
@@ -23,8 +23,9 @@ function commerce_avalara_credentials_settings_form($form, &$form_state) {
     '#title' => t('API Credentials'),
     '#type' => 'fieldset',
     '#attributes' => array(
-      'id' => 'commerce-avalara-credentials',
+      'id' => 'commerce-avalara-credentials-wrapper',
     ),
+    '#description' => t('Please note that only the account number and the license key are validated.')
   );
 
   $form['credentials']['commerce_avalara_api_mode'] = array(
@@ -35,24 +36,31 @@ function commerce_avalara_credentials_settings_form($form, &$form_state) {
     '#default_value' => $api_mode,
     '#ajax' => array(
       'callback' => 'commerce_avalara_ajax_mode_credentials',
-      'wrapper' => 'commerce-avalara-credentials',
+      'wrapper' => 'commerce-avalara-credentials-wrapper',
     ),
   );
 
   // Allow to set different credentials for each mode (dev|prod).
-  $credential_fields = array(
+  $fields = array(
+    COMMERCE_AVALARA_COMPANY_CODE_FIELD => array(
+      'title' => t('@mode company code', array('@mode' => $modes[$api_mode])),
+      'description' => t('The Avalara company code.'),
+      'required' => FALSE,
+    ),
     COMMERCE_AVALARA_ACCOUNT_NUMBER_FIELD => array(
       'title' => t('@mode account number', array('@mode' => $modes[$api_mode])),
       'description' => t('The Avalara account number that is used to authenticate against the API.'),
+      'required' => TRUE,
     ),
     COMMERCE_AVALARA_LICENSE_KEY_FIELD => array(
       'title' => t('@mode license key', array('@mode' => $modes[$api_mode])),
       'description' => t('The Avalara license key that is used to authenticate against the API.'),
+      'required' => TRUE,
     ),
   );
 
   $display_warning = FALSE;
-  foreach ($credential_fields as $key => $conf) {
+  foreach ($fields as $key => $conf) {
     $function = 'commerce_avalara_' . $key;
     $variable_value = $function($api_mode);
     $variable_name = 'commerce_avalara_' . $api_mode . '_' . $key;
@@ -75,7 +83,7 @@ function commerce_avalara_credentials_settings_form($form, &$form_state) {
         '#title' => $conf['title'],
         '#description' => $conf['description'],
         '#default_value' => $variable_value,
-        '#required' => TRUE,
+        '#required' => $conf['required'],
       );
     }
 
@@ -102,7 +110,7 @@ function commerce_avalara_credentials_settings_form($form, &$form_state) {
     '#validate' => array('commerce_avalara_credentials_settings_validate'),
     '#ajax' => array(
       'callback' => 'commerce_avalara_ajax_mode_credentials',
-      'wrapper' => 'commerce-avalara-credentials',
+      'wrapper' => 'commerce-avalara-credentials-wrapper',
     ),
   );
 
@@ -149,7 +157,7 @@ function commerce_avalara_credentials_settings_validate($form, &$form_state) {
  */
 function commerce_avalara_credentials_settings_form_validate($form, &$form_state) {
   if (empty($form_state['credentials_validated'])) {
-    drupal_set_message(t('Please note that the credentials were not validated.'), 'warning');
+    drupal_set_message(t('Please note that you have to click on the "Validate credentials" button in order to test the connectivity to the API.'), 'warning');
   }
 }
 
@@ -158,4 +166,57 @@ function commerce_avalara_credentials_settings_form_validate($form, &$form_state
  */
 function commerce_avalara_ajax_mode_credentials($form, $form_state) {
   return $form['credentials'];
+}
+
+/**
+ * Builds the Avalara address settings form.
+ */
+function commerce_avalara_address_settings_form($form, &$form_state) {
+  $form['address'] = array(
+    '#title' => t('Address validation'),
+    '#type' => 'fieldset',
+    '#attributes' => array(
+      'id' => 'commerce-avalara-address-wrapper'
+    ),
+  );
+
+  $form['address']['commerce_avalara_validate_address'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Validate shipping address during checkout'),
+    '#default_value' => variable_get('commerce_avatax_validate_address', TRUE),
+  );
+  $validate_address = variable_get('commerce_avalara_validate_address', TRUE);
+  if (isset($form_state['values']['commerce_avalara_validate_address'])) {
+    $validate_address = $form_state['values']['commerce_avalara_validate_address'];
+  }
+  if ($validate_address) {
+    $countries = variable_get('commerce_avalara_address_validate_countries', array('US'));
+    if (!is_array($countries)) {
+      $countries = array($countries);
+    }
+    $form['address']['commerce_avalara_address_validate_countries'] = array(
+      '#type' => 'select',
+      '#title' => t('Countries'),
+      '#description' => t('Countries to validate addresses?'),
+      '#options' => array(
+        'US' => t('United States'),
+      ),
+      '#default_value' => $countries,
+      '#required' => TRUE,
+    );
+    $form['address']['commerce_avalara_address_postal_code'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Match on postal code'),
+      '#description' => t('Postal codes are 9 digits, but most people enter the first 5 digits, do you want AvaTax to match all 9 digits?'),
+      '#default_value' => variable_get('commerce_avalara_address_postal_code', TRUE),
+    );
+    $form['address']['commerce_avalara_autocomplete_postal_code'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Auto complete 5 digit postal code to 9 digits'),
+      '#description' => t('Automatically insert the 9 digit postal code provided by AvaTax'),
+      '#default_value' => variable_get('commerce_avalara_autocomplete_postal_code', TRUE),
+    );
+  }
+
+  return system_settings_form($form);
 }
