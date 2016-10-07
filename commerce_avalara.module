@@ -8,6 +8,7 @@
 define('COMMERCE_AVALARA_PRODUCTION_MODE', 'prod');
 define('COMMERCE_AVALARA_DEVELOPMENT_MODE', 'dev');
 // Defines constants for the credentials field names.
+define('COMMERCE_AVALARA_VAR_PREFIX', 'commerce_avalara_');
 define('COMMERCE_AVALARA_ACCOUNT_NUMBER_FIELD', 'account_number');
 define('COMMERCE_AVALARA_LICENSE_KEY_FIELD', 'license_key');
 define('COMMERCE_AVALARA_COMPANY_CODE_FIELD', 'company_code');
@@ -45,6 +46,14 @@ function commerce_avalara_menu() {
     'access arguments' => array('administer avalara'),
     'weight' => -10,
   );
+  $items['admin/commerce/config/avalara/shipping-settings'] = array(
+    'title' => 'Shipping settings',
+    'type' => MENU_LOCAL_TASK,
+    'access arguments' => array('administer avalara'),
+    'page arguments' => array('commerce_avalara_shipping_settings_form'),
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+    'weight' => -1,
+  );
   $items['admin/commerce/config/avalara/address-validation'] = array(
     'title' => 'Address validation',
     'type' => MENU_LOCAL_TASK,
@@ -75,7 +84,7 @@ function commerce_avalara_address_validation_access($permission) {
  * Returns the API mode.
  */
 function commerce_avalara_api_mode() {
-  return variable_get('commerce_avalara_api_mode', COMMERCE_AVALARA_DEVELOPMENT_MODE);
+  return variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'api_mode', COMMERCE_AVALARA_DEVELOPMENT_MODE);
 }
 
 /**
@@ -85,7 +94,7 @@ function commerce_avalara_api_mode() {
  *  For which API mode (dev|prod) the account number is requested.
  */
 function commerce_avalara_account_number($api_mode = COMMERCE_AVALARA_DEVELOPMENT_MODE) {
-  return variable_get('commerce_avalara_' . $api_mode . '_' . COMMERCE_AVALARA_ACCOUNT_NUMBER_FIELD, '');
+  return variable_get(COMMERCE_AVALARA_VAR_PREFIX . $api_mode . '_' . COMMERCE_AVALARA_ACCOUNT_NUMBER_FIELD, '');
 }
 
 /**
@@ -95,7 +104,7 @@ function commerce_avalara_account_number($api_mode = COMMERCE_AVALARA_DEVELOPMEN
  *  For which API mode (dev|prod) the company code is requested.
  */
 function commerce_avalara_company_code($api_mode = COMMERCE_AVALARA_DEVELOPMENT_MODE) {
-  return variable_get('commerce_avalara_' . $api_mode . '_' . COMMERCE_AVALARA_COMPANY_CODE_FIELD, '');
+  return variable_get(COMMERCE_AVALARA_VAR_PREFIX . $api_mode . '_' . COMMERCE_AVALARA_COMPANY_CODE_FIELD, '');
 }
 
 /**
@@ -105,7 +114,7 @@ function commerce_avalara_company_code($api_mode = COMMERCE_AVALARA_DEVELOPMENT_
  *  For which API mode (dev|prod) the license key is requested.
  */
 function commerce_avalara_license_key($api_mode = COMMERCE_AVALARA_DEVELOPMENT_MODE) {
-  return variable_get('commerce_avalara_' . $api_mode . '_' . COMMERCE_AVALARA_LICENSE_KEY_FIELD, '');
+  return variable_get(COMMERCE_AVALARA_VAR_PREFIX . $api_mode . '_' . COMMERCE_AVALARA_LICENSE_KEY_FIELD, '');
 }
 
 /**
@@ -139,4 +148,93 @@ function commerce_avalara_object($account_number = '', $license_key = '', $api_m
   }
 
   return $avalara[$api_mode];
+}
+
+/**
+ * Implements hook_commerce_line_item_type_info().
+ */
+function commerce_avalara_commerce_line_item_type_info() {
+  $line_item_types = array();
+
+  $line_item_types['avalara_sales_tax'] = array(
+    'name' => t('Sales tax'),
+    'description' => t('Calculate AvaTax'),
+    'add_form_submit_value' => t('Add Sales tax'),
+    'base' => 'commerce_avalara_line_item',
+    'callbacks' => array(
+      'configuration' => 'commerce_avalara_configure_line_item',
+    ),
+  );
+
+  return $line_item_types;
+}
+
+/**
+ * Line item callback: configures the AvaTax line item type on module enable.
+ */
+function commerce_avalara_configure_line_item() {
+  $field_name = 'avatax';
+  $type = 'avatax';
+
+  $field = field_info_field($field_name);
+  $instance = field_info_instance('commerce_line_item', $field_name, $type);
+
+  if (empty($field)) {
+    $field = array(
+      'field_name' => $field_name,
+      'type' => 'list_text',
+      'cardinality' => 1,
+      'entity_types' => array('commerce_line_item'),
+      'translatable' => FALSE,
+      'locked' => TRUE,
+    );
+    $field = field_create_field($field);
+  }
+
+  if (empty($instance)) {
+    $instance = array(
+      'field_name' => $field_name,
+      'entity_type' => 'commerce_line_item',
+      'bundle' => $type,
+      'label' => t('AvaTax'),
+      'required' => TRUE,
+      'settings' => array(),
+      'widget' => array(
+        'type' => 'options_select',
+        'weight' => 0,
+      ),
+      'display' => array(
+        'display' => array(
+          'label' => 'hidden',
+          'weight' => 0,
+        ),
+      ),
+    );
+    field_create_instance($instance);
+  }
+}
+
+/**
+ * Returns the title of an AvaTax line item.
+ */
+function commerce_avalara_line_item_title($line_item) {
+  if (!empty($line_item->data['avatax']['display_title'])) {
+    return $line_item->data['avatax']['display_title'];
+  }
+}
+
+/**
+ * Implements hook_commerce_price_component_type_info().
+ */
+function commerce_avalara_commerce_price_component_type_info() {
+  $components = array();
+
+  // Define a generic AvaTax price component type.
+  $components['avatax'] = array(
+    'title' => t('AvaTax sales tax'),
+    'display_title' => variable_get('commerce_avalara_price_component_title', t('Sales tax')),
+    'weight' => 25,
+  );
+
+  return $components;
 }
