@@ -138,6 +138,77 @@ class Avatax {
   }
 
   /**
+   * Create a new transaction.
+   *
+   * @param string $companyCode
+   *   The company code of the company that recorded these transactions.
+   *
+   * @param string[] $parameters
+   *   An associative array of POST body parameters to be sent that should at
+   *   least contain the code, the date, and the customerCode.
+   */
+  public function transactionsCreate($companyCode, $parameters) {
+    return $this->doRequest('POST', "companies/$companyCode/transactions/create", $parameters);
+  }
+
+  /**
+   * Correct a previously created transaction.
+   *
+   * @param string $companyCode
+   *   The company code of the company that recorded these transactions.
+   *
+   * @param string $transactionCode
+   *   The transaction code to adjust.
+   *
+   * @param string[] $parameters
+   *   An associative array of POST body parameters that should contain the
+   *   adjustmentReason & adjustmentDescription.
+   *
+   * @return array
+   *
+   */
+  public function transactionsAdjust($companyCode, $transactionCode, $parameters) {
+    return $this->doRequest('POST', "companies/$companyCode/transactions/$transactionCode/adjust", $parameters);
+  }
+
+  /**
+   * Void a transaction
+   *
+   * @param string $companyCode
+   *   The company code of the company that recorded these transactions.
+   *
+   * @param string $transactionCode
+   *   The transaction code to void.
+   *
+   * @param string[] $parameters
+   *   An associative array of POST body parameters that should contain the
+   *   code (the reason for voiding or cancelling this transaction).
+   *
+   * @return array
+   *
+   */
+  public function transactionsVoid($companyCode, $transactionCode, $parameters) {
+    return $this->doRequest('POST', "companies/$companyCode/transactions/$transactionCode/void", $parameters);
+  }
+
+  /**
+   * Commit a transaction for reporting.
+   *
+   * @param string $companyCode
+   *   The company code of the company that recorded these transactions.
+   *
+   * @param string $transactionCode
+   *   The transaction code to commit.
+   *
+   * @return array
+   *   An associative array containing the id number of the transaction, the
+   *   code, the companyId, date etc.
+   */
+  public function transactionsCommit($companyCode, $transactionCode) {
+    return $this->doRequest('POST', "companies/$companyCode/transactions/$transactionCode/commit", array('commit' => TRUE));
+  }
+
+  /**
    * Sets the default cURL options.
    */
   public function setDefaultCurlOptions() {
