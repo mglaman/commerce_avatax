@@ -7,6 +7,9 @@
 
 define('COMMERCE_AVALARA_PRODUCTION_MODE', 'prod');
 define('COMMERCE_AVALARA_DEVELOPMENT_MODE', 'dev');
+// Defines constants for the credentials field names.
+define('COMMERCE_AVALARA_ACCOUNT_NUMBER_FIELD', 'account_number');
+define('COMMERCE_AVALARA_LICENSE_KEY_FIELD', 'license_key');
 
 /**
  * Implements hook_permission().
@@ -50,51 +53,54 @@ function commerce_avalara_api_mode() {
 }
 
 /**
- * Returns the site-wide Avalara username for a given API mode.
+ * Returns the site-wide Avalara account number for a given API mode.
+ *
+ * @param string $api_mode
+ *  For which API mode (dev|prod) the account number is requested.
  */
-function commerce_avalara_username($api_mode = COMMERCE_AVALARA_DEVELOPMENT_MODE) {
-  return variable_get('commerce_avalara_' . $api_mode . '_username', '');
+function commerce_avalara_account_number($api_mode = COMMERCE_AVALARA_DEVELOPMENT_MODE) {
+  return variable_get('commerce_avalara_' . $api_mode . '_' . COMMERCE_AVALARA_ACCOUNT_NUMBER_FIELD, '');
 }
 
 /**
- * Returns the site-wide Avalara password for a given API mode.
+ * Returns the site-wide Avalara license key for a given API mode.
+ *
+ * @param string $api_mode
+ *  For which API mode (dev|prod) the license key is requested.
  */
-function commerce_avalara_password($api_mode = COMMERCE_AVALARA_DEVELOPMENT_MODE) {
-  return variable_get('commerce_avalara_' . $api_mode . '_password', '');
+function commerce_avalara_license_key($api_mode = COMMERCE_AVALARA_DEVELOPMENT_MODE) {
+  return variable_get('commerce_avalara_' . $api_mode . '_' . COMMERCE_AVALARA_LICENSE_KEY_FIELD, '');
 }
 
 /**
  * Returns a statically cached instance of an Avatax object.
  *
- * @param string $auth_key
- *   The encoded authorization header that is used to authenticate against
- *   the API.
+ * @param string $account_number
+ *   The Avalara account number that is used to authenticate against the API.
+ * @param string $license_key
+ *   The Avalara license key that is used to authenticate against the API.
+ * @param string $api_mode
  *
  * @return Avatax|bool.
  *   The constructed Avatax object or FALSE if the library could not be loaded..
  */
-function commerce_avalara_object($auth_key = '') {
+function commerce_avalara_object($account_number = '', $license_key = '', $api_mode = COMMERCE_AVALARA_DEVELOPMENT_MODE) {
   $avalara = &drupal_static(__FUNCTION__);
 
-  // If the auth key wasn't provided,
-  if (!$auth_key) {
-    $api_mode = commerce_avalara_api_mode();
-    $username = commerce_avalara_username($api_mode);
-    $password = commerce_avalara_password($api_mode);
-
-    if (!empty($username) && !empty($password)) {
-      $auth_key = base64_encode("$username:$password");
-    }
+  // If the account number or the license key weren't provided,
+  if (empty($account_number) || empty($license_key)) {
+    $account_number = commerce_avalara_account_number($api_mode);
+    $license_key = commerce_avalara_license_key($api_mode);
   }
 
-  // If the AUTH key is still empty, return FALSE.
-  if (!$auth_key) {
+  // If the account number or license key is still empty, return FALSE.
+  if (empty($account_number) || empty($license_key)) {
     return FALSE;
   }
 
   if (!isset($avalara)) {
-    $avalara[$auth_key] = new Avatax($auth_key);
+    $avalara[$api_mode] = new Avatax($account_number, $license_key, $api_mode);
   }
 
-  return $avalara[$auth_key];
+  return $avalara[$api_mode];
 }

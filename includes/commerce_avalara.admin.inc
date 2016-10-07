@@ -1,5 +1,4 @@
 <?php
-
 /**
  * @file
  * Administrative callbacks for the Commerce Avalara module.
@@ -42,12 +41,18 @@ function commerce_avalara_credentials_settings_form($form, &$form_state) {
 
   // Allow to set different credentials for each mode (dev|prod).
   $credential_fields = array(
-    'username' => t('@mode account Username', array('@mode' => $modes[$api_mode])),
-    'password' => t('@mode account Password', array('@mode' => $modes[$api_mode])),
+    COMMERCE_AVALARA_ACCOUNT_NUMBER_FIELD => array(
+      'title' => t('@mode account number', array('@mode' => $modes[$api_mode])),
+      'description' => t('The Avalara account number that is used to authenticate against the API.'),
+    ),
+    COMMERCE_AVALARA_LICENSE_KEY_FIELD => array(
+      'title' => t('@mode license key', array('@mode' => $modes[$api_mode])),
+      'description' => t('The Avalara license key that is used to authenticate against the API.'),
+    ),
   );
 
   $display_warning = FALSE;
-  foreach ($credential_fields as $key => $label) {
+  foreach ($credential_fields as $key => $conf) {
     $function = 'commerce_avalara_' . $key;
     $variable_value = $function($api_mode);
     $variable_name = 'commerce_avalara_' . $api_mode . '_' . $key;
@@ -59,14 +64,16 @@ function commerce_avalara_credentials_settings_form($form, &$form_state) {
     if (!empty($variable_value) && empty($variable_in_db)) {
       $form['credentials'][$variable_name] = array(
         '#type' => 'item',
-        '#title' => $label,
+        '#title' => $conf['title'],
+        '#description' => $conf['description'],
         '#markup' => check_plain($variable_value),
       );
     }
     else {
       $form['credentials'][$variable_name] = array(
         '#type' => 'textfield',
-        '#title' => $label,
+        '#title' => $conf['title'],
+        '#description' => $conf['description'],
         '#default_value' => $variable_value,
         '#required' => TRUE,
       );
@@ -81,40 +88,68 @@ function commerce_avalara_credentials_settings_form($form, &$form_state) {
 
   // Show a message informing the user of best practices to not store API
   // credentials in the database if necessary.
-  if ($display_warning) {
+  // Avoid to repeat the message during when the credentials are validated.
+  if ($display_warning && !isset($form_state['triggering_element'])) {
     $description = t('It is best practice to store API credentials outside of the database and your source code repository.');
     $description .= ' ' . t('Consider setting the credential variables as server environment variables and bringing them into your Drupal configuration via the $conf array in your settings.php file instead.');
-    $form['credentials']['#description'] = '<div class="messages warning">' . $description . '</div>';
+    drupal_set_message($description, 'warning');
   }
 
+  // Add a "Validate credentials" button.
+  $form['credentials']['validate'] = array(
+    '#value' => t('Validate credentials'),
+    '#type' => 'submit',
+    '#validate' => array('commerce_avalara_credentials_settings_validate'),
+    '#ajax' => array(
+      'callback' => 'commerce_avalara_ajax_mode_credentials',
+      'wrapper' => 'commerce-avalara-credentials',
+    ),
+  );
+
   $form = system_settings_form($form);
-  $form['actions']['submit']['#value'] = t('Validate credentials');
   return $form;
+}
+
+/**
+ * Validate handler for the "Validate credentials" button.
+ */
+function commerce_avalara_credentials_settings_validate($form, &$form_state) {
+  $api_mode = $form_state['values']['commerce_avalara_api_mode'];
+  $account_number_field = 'commerce_avalara_' . $api_mode . '_' . COMMERCE_AVALARA_ACCOUNT_NUMBER_FIELD;
+  $license_key_field = 'commerce_avalara_' . $api_mode . '_' . COMMERCE_AVALARA_LICENSE_KEY_FIELD;
+  $account_number = $form_state['values'][$account_number_field];
+  $license_key = $form_state['values'][$license_key_field];
+  $valid = FALSE;
+
+  // Validate the credentials provided.
+  if (!empty($account_number) && !empty($license_key)) {
+    if ($avalara = commerce_avalara_object($account_number, $license_key, $api_mode)) {
+      $ping_request = $avalara->ping();
+
+      if ($ping_request['success'] && !empty($ping_request['result']['authenticated'])) {
+        $valid = TRUE;
+      }
+    }
+
+    if (!$valid) {
+      form_set_error($account_number_field);
+      form_set_error($license_key_field);
+      drupal_set_message(t('Could not authenticate to the Avatax API.'), 'error');
+    }
+    else {
+      $form_state['credentials_validated'] = TRUE;
+      drupal_set_message(t('AvaTax response confirmed using the account and license key above.'));
+    }
+    $form_state['rebuild'] = TRUE;
+  }
 }
 
 /**
  * Form validation handler for commerce_avalara_credentials_settings_form().
  */
 function commerce_avalara_credentials_settings_form_validate($form, &$form_state) {
-  $authenticated = FALSE;
-  // The variables are not yet saved to the database, so we need to manually
-  // commerce_avalara_object() won't be able to correctly encode the
-  // authorization key, we need to do that here.
-  $username = $form_state['values']['commerce_avalara_' . $form_state['values']['commerce_avalara_api_mode'] . '_username'];
-  $password = $form_state['values']['commerce_avalara_' . $form_state['values']['commerce_avalara_api_mode'] . '_password'];
-
-  // Perform a PING request to test if the authentification worked.
-  if (!empty($username) && !empty($password)) {
-    if ($avalara = commerce_avalara_object(base64_encode("$username:$password"))) {
-      $ping_request = $avalara->ping();
-
-      if ($ping_request['success'] && !empty($ping_request['result']['authenticated'])) {
-        $authenticated = TRUE;
-      }
-    }
-  }
-  if (!$authenticated) {
-    form_set_error('credentials', t('Could not authenticate to the Avatax API'));
+  if (empty($form_state['credentials_validated'])) {
+    drupal_set_message(t('Please note that the credentials were not validated.'), 'warning');
   }
 }
 

@@ -22,9 +22,14 @@ class Avatax {
 
   const BASE_TEST_URL = 'https://rest-sbx-preview.avalara.net/api/v2/';
 
-  // The encoded authorization header that is used to authenticate against
-  // the API.
-  protected $authKey;
+  // The Avalara account number that is used to authenticate against the API.
+  protected $accountNumber;
+
+  // The Avalara account number that is used to authenticate against the API.
+  protected $licenseKey;
+
+  // The API mode (dev|prod).
+  protected $apiMode;
 
   // Reference the logger callable.
   protected $logger;
@@ -35,21 +40,46 @@ class Avatax {
   /**
    * Initializes the API credential properties and cURL handle.
    *
-   * @param string $authKey
-   *   The encoded authorization header that is used to authenticate.
+   * @param string $accountNumber
+   *   The Avalara account number that is used to authenticate against the API.
+   * @param string $licenseKey
+   *   The Avalara license key that is used to authenticate against the API.
+   * @param string $apiMode
+   *   The API mode (dev|prod), used to determine the endpoint to call.
    * @param string $logger
    *   A callable used to log API request / response messages. Leave empty if
    *   logging is not needed.
    */
-  public function __construct($authKey, $logger = NULL) {
+  public function __construct($accountNumber, $licenseKey, $apiMode = 'dev', $logger = NULL) {
     // Initialize the API credential properties.
-    $this->authKey = $authKey;
+    $this->accountNumber = $accountNumber;
+    $this->licenseKey = $licenseKey;
+    $this->apiMode = $apiMode;
 
     // Initialize the cURL handle.
     $this->ch = curl_init();
     $this->setDefaultCurlOptions();
   }
 
+  /**
+   * Returns the object's account number.
+   *
+   * @return string
+   *   The Account number.
+   */
+  public function getAccountNumber() {
+    return $this->accountNumber;
+  }
+
+  /**
+   * Returns the object's license key.
+   *
+   * @return string
+   *   The License key.
+   */
+  public function getLicenseKey() {
+    return $this->licenseKey;
+  }
 
   /**
    * Closes the cURL handle when the object is destroyed.
@@ -69,7 +99,9 @@ class Avatax {
    */
   public function setDefaultCurlOptions() {
     curl_setopt($this->ch, CURLOPT_HEADER, FALSE);
-    curl_setopt($this->ch, CURLOPT_HTTPHEADER, array('Authorization: Basic ' . $this->authKey));
+    curl_setopt($this->ch, CURLOPT_HTTPHEADER, array(
+      'Authorization: Basic ' . base64_encode($this->getAccountNumber() . ':' . $this->getLicenseKey()),
+    ));
     curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, TRUE);
     curl_setopt($this->ch, CURLOPT_SSL_VERIFYPEER, TRUE);
     curl_setopt($this->ch, CURLOPT_VERBOSE, FALSE);
