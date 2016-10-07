@@ -238,3 +238,44 @@ function commerce_avalara_commerce_price_component_type_info() {
 
   return $components;
 }
+
+/**
+ * Calculate sales tax for a given order.
+ */
+function commerce_avalara_calculate_sales_tax($order) {
+  // Skip tax calculation if the option is disabled
+  if (!variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'tax_calculation_enabled', TRUE)) {
+    return;
+  }
+}
+
+/**
+ * Deletes Avalara Sales Tax line items of an order.
+ *
+ * @param object $order
+ *   The order object to delete the line items from.
+ */
+function commerce_avalara_delete_sales_tax_line_items($order) {
+  $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+
+  // When deleting more than one line item, metadata_wrapper will give problems
+  // if deleting while looping through the line items. So first remove from
+  // order and then delete the line items.
+  $line_item_ids = array();
+
+  foreach ($order_wrapper->commerce_line_items as $delta => $line_item_wrapper) {
+    // If this line item is an avatax line item...
+    if ($line_item_wrapper->type->value() == 'avalara_sales_tax') {
+      // Store its ID for later deletion and remove the reference from the line
+      // item reference field.
+      $line_item_ids[] = $line_item_wrapper->line_item_id->value();
+      $order_wrapper->commerce_line_items->offsetUnset($delta);
+    }
+  }
+
+  // If we found any AvaTax line items.
+  if (!empty($line_item_ids)) {
+    // Then delete the line items.
+    commerce_line_item_delete_multiple($line_item_ids);
+  }
+}
