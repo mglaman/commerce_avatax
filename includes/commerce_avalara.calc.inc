@@ -55,6 +55,7 @@ function commerce_avalara_create_transaction($order) {
     'code' => 'DC-' . $order->order_id,
     'customerCode' => $customer_code,
     'currencyCode' => $order_wrapper->commerce_order_total->currency_code->value(),
+    'companyCode' => $company_code,
     'addresses' => array(),
   );
 
@@ -124,7 +125,7 @@ function commerce_avalara_create_transaction($order) {
       }
       $lines[] = array(
         'id' => $line_item->line_item_id,
-        'number' => $delta,
+        'number' => $delta + 1,
         'itemCode' => $line_item_wrapper->commerce_product->sku->value(),
         'description' => $line_item_wrapper->commerce_product->title->value(),
         'taxCode' => $tax_code,
@@ -141,7 +142,7 @@ function commerce_avalara_create_transaction($order) {
     elseif ($line_item->type === 'shipping') {
       $lines[] = array(
         'id' => $line_item->line_item_id,
-        'number' => $delta,
+        'number' => $delta + 1,
         'itemCode' => 'Shipping',
         'description' => 'Shipping',
         // Retrieve the configured Shipping tax code.
@@ -159,7 +160,7 @@ function commerce_avalara_create_transaction($order) {
     elseif ($line_item->type === 'commerce_coupon') {
       $lines[] = array(
         'id' => $line_item->line_item_id,
-        'number' => $delta,
+        'number' => $delta + 1,
         'itemCode' => 'Coupon',
         'description' => 'Coupon Amt',
         'taxCode' => '0D010000',
