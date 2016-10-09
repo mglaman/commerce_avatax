@@ -7,6 +7,8 @@
 
 define('COMMERCE_AVALARA_PRODUCTION_MODE', 'prod');
 define('COMMERCE_AVALARA_DEVELOPMENT_MODE', 'dev');
+define('COMMERCE_AVALARA_BASIC_VERSION', 'basic');
+define('COMMERCE_AVALARA_PRO_VERSION', 'pro');
 // Defines constants for the credentials field names.
 define('COMMERCE_AVALARA_VAR_PREFIX', 'commerce_avalara_');
 define('COMMERCE_AVALARA_ACCOUNT_NUMBER_FIELD', 'account_number');
@@ -88,33 +90,31 @@ function commerce_avalara_api_mode() {
 }
 
 /**
- * Returns the site-wide Avalara account number for a given API mode.
- *
- * @param string $api_mode
- *  For which API mode (dev|prod) the account number is requested.
+ * Returns the Avalara Product version (Basic|Pro).
  */
-function commerce_avalara_account_number($api_mode = COMMERCE_AVALARA_DEVELOPMENT_MODE) {
-  return variable_get(COMMERCE_AVALARA_VAR_PREFIX . $api_mode . '_' . COMMERCE_AVALARA_ACCOUNT_NUMBER_FIELD, '');
+function commerce_avalara_product_version() {
+  return variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'product_version', COMMERCE_AVALARA_BASIC_VERSION);
+}
+
+/**
+ * Returns the site-wide Avalara account number.
+ */
+function commerce_avalara_account_number() {
+  return variable_get(COMMERCE_AVALARA_VAR_PREFIX . commerce_avalara_api_mode() . '_' . COMMERCE_AVALARA_ACCOUNT_NUMBER_FIELD, '');
 }
 
 /**
  * Returns the site-wide Avalara company code for a given API mode.
- *
- * @param string $api_mode
- *  For which API mode (dev|prod) the company code is requested.
  */
-function commerce_avalara_company_code($api_mode = COMMERCE_AVALARA_DEVELOPMENT_MODE) {
-  return variable_get(COMMERCE_AVALARA_VAR_PREFIX . $api_mode . '_' . COMMERCE_AVALARA_COMPANY_CODE_FIELD, '');
+function commerce_avalara_company_code() {
+  return variable_get(COMMERCE_AVALARA_VAR_PREFIX . commerce_avalara_api_mode() . '_' . COMMERCE_AVALARA_COMPANY_CODE_FIELD, '');
 }
 
 /**
- * Returns the site-wide Avalara license key for a given API mode.
- *
- * @param string $api_mode
- *  For which API mode (dev|prod) the license key is requested.
+ * Returns the site-wide Avalara license key.
  */
-function commerce_avalara_license_key($api_mode = COMMERCE_AVALARA_DEVELOPMENT_MODE) {
-  return variable_get(COMMERCE_AVALARA_VAR_PREFIX . $api_mode . '_' . COMMERCE_AVALARA_LICENSE_KEY_FIELD, '');
+function commerce_avalara_license_key() {
+  return variable_get(COMMERCE_AVALARA_VAR_PREFIX . commerce_avalara_api_mode() . '_' . COMMERCE_AVALARA_LICENSE_KEY_FIELD, '');
 }
 
 /**
@@ -124,18 +124,17 @@ function commerce_avalara_license_key($api_mode = COMMERCE_AVALARA_DEVELOPMENT_M
  *   The Avalara account number that is used to authenticate against the API.
  * @param string $license_key
  *   The Avalara license key that is used to authenticate against the API.
- * @param string $api_mode
  *
  * @return Avatax|bool.
  *   The constructed Avatax object or FALSE if the library could not be loaded..
  */
-function commerce_avalara_object($account_number = '', $license_key = '', $api_mode = COMMERCE_AVALARA_DEVELOPMENT_MODE) {
+function commerce_avalara_object($account_number = '', $license_key = '') {
   $avalara = &drupal_static(__FUNCTION__);
 
   // If the account number or the license key weren't provided,
   if (empty($account_number) || empty($license_key)) {
-    $account_number = commerce_avalara_account_number($api_mode);
-    $license_key = commerce_avalara_license_key($api_mode);
+    $account_number = commerce_avalara_account_number();
+    $license_key = commerce_avalara_license_key();
   }
 
   // If the account number or license key is still empty, return FALSE.
@@ -143,8 +142,18 @@ function commerce_avalara_object($account_number = '', $license_key = '', $api_m
     return FALSE;
   }
 
+  // Retrieve the configured API mode (dev|prod).
+  $api_mode = commerce_avalara_api_mode();
+
   if (!isset($avalara)) {
-    $avalara[$api_mode] = new Avatax($account_number, $license_key, $api_mode);
+    $logger = NULL;
+
+    // Specify the logger if the logging was enabled.
+    if (variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'enable_logging', FALSE)) {
+      $logger = 'watchdog';
+    }
+
+    $avalara[$api_mode] = new Avatax($account_number, $license_key, $api_mode, $logger);
   }
 
   return $avalara[$api_mode];
@@ -161,66 +170,9 @@ function commerce_avalara_commerce_line_item_type_info() {
     'description' => t('Calculate AvaTax'),
     'add_form_submit_value' => t('Add Sales tax'),
     'base' => 'commerce_avalara_line_item',
-    'callbacks' => array(
-      'configuration' => 'commerce_avalara_configure_line_item',
-    ),
   );
 
   return $line_item_types;
-}
-
-/**
- * Line item callback: configures the AvaTax line item type on module enable.
- */
-function commerce_avalara_configure_line_item() {
-  $field_name = 'avatax';
-  $type = 'avatax';
-
-  $field = field_info_field($field_name);
-  $instance = field_info_instance('commerce_line_item', $field_name, $type);
-
-  if (empty($field)) {
-    $field = array(
-      'field_name' => $field_name,
-      'type' => 'list_text',
-      'cardinality' => 1,
-      'entity_types' => array('commerce_line_item'),
-      'translatable' => FALSE,
-      'locked' => TRUE,
-    );
-    $field = field_create_field($field);
-  }
-
-  if (empty($instance)) {
-    $instance = array(
-      'field_name' => $field_name,
-      'entity_type' => 'commerce_line_item',
-      'bundle' => $type,
-      'label' => t('AvaTax'),
-      'required' => TRUE,
-      'settings' => array(),
-      'widget' => array(
-        'type' => 'options_select',
-        'weight' => 0,
-      ),
-      'display' => array(
-        'display' => array(
-          'label' => 'hidden',
-          'weight' => 0,
-        ),
-      ),
-    );
-    field_create_instance($instance);
-  }
-}
-
-/**
- * Returns the title of an AvaTax line item.
- */
-function commerce_avalara_line_item_title($line_item) {
-  if (!empty($line_item->data['avatax']['display_title'])) {
-    return $line_item->data['avatax']['display_title'];
-  }
 }
 
 /**
@@ -240,13 +192,122 @@ function commerce_avalara_commerce_price_component_type_info() {
 }
 
 /**
+ * Returns the title of an AvaTax line item.
+ */
+function commerce_avalara_line_item_title($line_item) {
+  if (!empty($line_item->data['avatax']['display_title'])) {
+    return $line_item->data['avatax']['display_title'];
+  }
+  return t('Sales Tax');
+}
+
+/**
+ * Implements hook_field_widget_form_alter().
+ */
+function commerce_avalara_field_widget_form_alter(&$element, &$form_state, $context) {
+  if ($context['instance']['widget']['type'] == 'commerce_line_item_manager') {
+    foreach ($element['line_items'] as $line_item_id => $line_item) {
+      if ($line_item['line_item']['#value']->type == 'avalara_sales_tax') {
+        $element['line_items'][$line_item_id]['commerce_unit_price']['#access'] = FALSE;
+        $element['line_items'][$line_item_id]['quantity']['#access'] = FALSE;
+      }
+    }
+  }
+}
+
+/**
+ * Creates a new Sales tax line item populated with the proper values.
+ *
+ * @param array $tax_price
+ *   A price array used to initialize the value of the line item's unit price.
+ * @param int $order_id
+ *   The ID of the order the line item belongs to.
+ * @param array $data
+ *   An array value to initialize the line item's data array with.
+ *
+ * @return
+ *   The shipping line item for the specified service initialized to the given
+ *   unit price.
+ */
+function commerce_avalara_line_item_new($tax_price, $order_id = 0, $data = array()) {
+  // Create the new line item.
+  $line_item = entity_create('commerce_line_item', array(
+    'type' => 'avalara_sales_tax',
+    'order_id' => $order_id,
+    'quantity' => 1,
+    'data' => $data,
+  ));
+
+  // Set the unit price.
+  $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
+  $line_item_wrapper->commerce_unit_price->amount = $tax_price['amount'];
+  $line_item_wrapper->commerce_unit_price->currency_code = $tax_price['currency_code'];
+
+  // Reset the data array of the line item total field to only include a
+  // base price component, set the currency code from the order.
+  $base_price = array(
+    'amount' => 0,
+    'currency_code' => $tax_price['currency_code'],
+    'data' => array(),
+  );
+
+  $line_item_wrapper->commerce_unit_price->data = commerce_price_component_add($base_price, 'base_price', $base_price, TRUE);
+  $line_item_wrapper->commerce_unit_price->data = commerce_price_component_add($line_item_wrapper->commerce_unit_price->value(), 'avalara_sales_tax', $tax_price, FALSE);
+
+  // Return the line item.
+  return $line_item;
+}
+
+/**
  * Calculate sales tax for a given order.
  */
 function commerce_avalara_calculate_sales_tax($order) {
-  // Skip tax calculation if the option is disabled
-  if (!variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'tax_calculation_enabled', TRUE)) {
+  $company_code = commerce_avalara_company_code();
+  // Skip tax calculation if the option is disabled, or if the company code
+  // is empty.
+  if (!variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'tax_calculation_enabled', TRUE) || empty($company_code)) {
     return;
   }
+  $customer_profile_to_use = variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'commerce_avalara_tax_address', FALSE);
+
+  // Retrieve the destination customer profile type to use for calculating the
+  // Sales Tax.
+  if (!$customer_profile_to_use) {
+    $customer_profile_to_use = module_exists('commerce_shipping') ? 'shipping' : 'billing';
+  }
+
+  // Checks if the Sales Tax needs to be calculated for this address.
+  if (!commerce_avalara_check_address($order, 'commerce_customer_' . $customer_profile_to_use)) {
+    return;
+  }
+  module_load_include('inc', 'commerce_avalara', 'includes/commerce_avalara.calc');
+  $request = commerce_avalara_create_transaction($order);
+}
+
+/**
+ * Checks if the Avatax service needs to be called for this address.
+ */
+function commerce_avalara_check_address($order, $customer_profile_field) {
+  $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+
+  if (isset($order_wrapper->{$customer_profile_field}) && isset($order_wrapper->{$customer_profile_field}->commerce_customer_address)) {
+    $customer_address = $order_wrapper->{$customer_profile_field}->commerce_customer_address->value();
+
+    // Don't calculate Sales Tax if the provided address is not in the US
+    // or Canada.
+    if (!in_array($customer_address['country'], array('US', 'CA'))) {
+      return FALSE;
+    }
+
+    $avatax_states = variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'select_states', array());
+
+    // Exit if not a valid AvaTax state.
+    if (!empty($avatax_states) && !in_array($customer_address['administrative_area'], $avatax_states)) {
+      return FALSE;
+    }
+  }
+
+  return TRUE;
 }
 
 /**
@@ -278,4 +339,20 @@ function commerce_avalara_delete_sales_tax_line_items($order) {
     // Then delete the line items.
     commerce_line_item_delete_multiple($line_item_ids);
   }
+}
+
+/**
+ * Generate AvaTax user name as approximation of e-mail address.
+ */
+function commerce_avalara_email_to_username($user_email) {
+  // Default to the first part of the e-mail address.
+  $name = substr($user_email, 0, strpos($user_email, '@'));
+
+  // Remove possible illegal characters.
+  $name = preg_replace('/[^A-Za-z0-9_.-]/', '', $name);
+
+  // Trim that value for spaces and length.
+  $name = trim(substr($name, 0, USERNAME_MAX_LENGTH - 4));
+
+  return $name;
 }

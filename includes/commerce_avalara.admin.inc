@@ -236,6 +236,15 @@ function commerce_avalara_general_settings_form($form, &$form_state) {
     '#title' => t('General settings'),
     '#type' => 'fieldset',
   );
+  $form['general'][COMMERCE_AVALARA_VAR_PREFIX . 'product_version'] = array(
+    '#title' => t('Select AvaTax Version'),
+    '#type' => 'select',
+    '#options' => array(
+      COMMERCE_AVALARA_BASIC_VERSION => t('AvaTax Basic'),
+      COMMERCE_AVALARA_PRO_VERSION => t('AvaTax Pro'),
+    ),
+    '#default_value' => commerce_avalara_product_version(),
+  );
   $form['general'][COMMERCE_AVALARA_VAR_PREFIX . 'tax_calculation_enabled'] = array(
     '#title' => t('Enable tax calculation?'),
     '#type' => 'checkbox',

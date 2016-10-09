@@ -1,0 +1,60 @@
+<?php
+
+/**
+ * @file
+ * Installation functions for Commerce Avalara module.
+ */
+
+/**
+ * Implements hook_requirements().
+ */
+function commerce_avalara_requirements($phase) {
+  // Skip the requirements check if SimpleTest is installed.
+  if (module_exists('simpletest')) {
+    return;
+  }
+  $requirements = array();
+
+  // Ensure translations don't break at install time.
+  $t = get_t();
+  $has_curl = extension_loaded('curl');
+
+  $requirements['commerce_avalara_curl'] = array(
+    'title' => $t('cURL'),
+    'value' => $has_curl ? $t('Enabled') : $t('Not found'),
+  );
+
+  if (!$has_curl) {
+    $requirements['commerce_avatax_curl']['severity'] = REQUIREMENT_ERROR;
+    $requirements['commerce_avatax_curl']['description'] = $t('Commerce Avalara requires PHP cURL extension to be enabled and configured on your server.');
+  }
+
+  return $requirements;
+}
+
+/**
+ * Implements hook_install().
+ *
+ * Create the Tax codes vocabulary (check if we need to move that when the
+ * general settings admin form is submitted.
+ */
+function commerce_avalara_install() {
+  $t = get_t();
+  $vocabulary = taxonomy_vocabulary_machine_name_load('avatax_tax_codes');
+
+  if (!$vocabulary) {
+    $vocabulary = (object) array(
+      'name' => $t('AvaTax Tax codes'),
+      'machine_name' => 'avatax_tax_codes',
+    );
+    taxonomy_vocabulary_save($vocabulary);
+    taxonomy_term_save((object) array(
+      'name' => 'P0000000',
+      'vid' => $vocabulary->vid,
+    ));
+    taxonomy_term_save((object) array(
+      'name' => 'NT',
+      'vid' => $vocabulary->vid,
+    ));
+  }
+}

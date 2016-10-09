@@ -62,6 +62,7 @@ class Avatax {
     $this->accountNumber = $accountNumber;
     $this->licenseKey = $licenseKey;
     $this->apiMode = $apiMode;
+    $this->logger = $logger;
     $this->setBaseUrl();
 
     // Initialize the cURL handle.
@@ -215,6 +216,7 @@ class Avatax {
     curl_setopt($this->ch, CURLOPT_HEADER, FALSE);
     curl_setopt($this->ch, CURLOPT_HTTPHEADER, array(
       'Authorization: Basic ' . base64_encode($this->getAccountNumber() . ':' . $this->getLicenseKey()),
+      'Content-Type: application/json',
     ));
     curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, TRUE);
     curl_setopt($this->ch, CURLOPT_SSL_VERIFYPEER, TRUE);
@@ -228,6 +230,10 @@ class Avatax {
    *
    * @param string $message
    *   The message to log.
+   * @param $variables
+   *   Array of variables to replace in the message on display or
+   *   NULL if message is already translated or not possible to
+   *   translate.
    * @param int $severity
    *   The severity of the message; one of the following values:
    *   - WATCHDOG_EMERGENCY: Emergency, system is unusable.
@@ -241,9 +247,9 @@ class Avatax {
    *
    * @see http://www.faqs.org/rfcs/rfc3164.html
    */
-  public function logMessage($message, $severity = WATCHDOG_NOTICE) {
+  public function logMessage($message, $variables = array(), $severity = WATCHDOG_NOTICE) {
     if (is_callable($this->logger)) {
-      call_user_func($this->logger, $message, $severity);
+      call_user_func_array($this->logger, array('commerce_avalara', $message, $variables, $severity));
     }
   }
 
@@ -281,7 +287,7 @@ class Avatax {
     $result = curl_exec($this->ch);
     $status_code = curl_getinfo($this->ch, CURLINFO_HTTP_CODE);
     $success = $status_code === 200;
-    $this->logMessage(t("@code response\n\n@result", array('@code' => $status_code, '@result' => $result)));
+    $this->logMessage("@code response\n\n@result", array('@code' => $status_code, '@result' => $result));
     if ($status_code != '200') {
       $result = 'Error ' . $status_code;
     }
