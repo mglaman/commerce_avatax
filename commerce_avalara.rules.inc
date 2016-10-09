@@ -22,7 +22,7 @@ function commerce_avalara_rules_action_info() {
       'parameter' => $parameter,
     ),
     'commerce_avalara_delete_sales_tax_line_items' => array(
-      'label' => t('Delete AvaTax line items'),
+      'label' => t('Delete Avalara Sales Tax line items'),
       'group' => t('Commerce AvaTax'),
       'parameter' => $parameter,
     ),

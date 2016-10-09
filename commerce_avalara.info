@@ -5,5 +5,8 @@ core = 7.x
 
 configure = admin/commerce/config/avalara
 
+dependencies[] = commerce
+dependencies[] = rules
+
 ; Identify the Avalara library files.
 files[] = lib/Avalara.php
