@@ -438,3 +438,326 @@ function commerce_avalara_void_transaction($order) {
     }
   }
 }
+
+/**
+ * Implements hook_module_implements_alter().
+ */
+function commerce_avalara_module_implements_alter(&$implementations, $hook) {
+  if ($hook == 'form_alter' && isset($implementations['commerce_avalara'])) {
+    // Place this module's implementation of hook_form_alter() is at the
+    // end of the invocation in order to ensure our custom submit function
+    // added to the checkout submit function runs last (once the customer
+    // profile is saved).
+    $group = $implementations['commerce_avalara'];
+    unset($implementations['commerce_avalara']);
+    $implementations['commerce_avalara'] = $group;
+  }
+}
+
+/**
+ * Implements hook_form_alter().
+ *
+ * Validate addresses during checkout if necessary.
+ */
+function commerce_avalara_form_alter(&$form, &$form_state, $form_id) {
+  // If we're dealing with a commerce checkout form.
+  if (strpos($form_id, 'commerce_checkout_form_') === 0) {
+    $address_validation_enabled = variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'validate_address', TRUE);
+
+    // Only alter the checkout form when the Address validation is enabled.
+    if (!$address_validation_enabled) {
+      return;
+    }
+
+    $checkout_page_id = substr($form_id, 23);
+    $customer_profile_pane_found = FALSE;
+    // Find all panes for our current checkout page.
+    foreach (commerce_checkout_panes(array('enabled' => TRUE, 'page' => $checkout_page_id)) as $pane_id => $checkout_pane) {
+      // If this pane is a customer profile based pane build a list of previous
+      // profiles from which to pick that are of the same bundle.
+      if (substr($pane_id, 0, 16) == 'customer_profile' && isset($form[$pane_id])) {
+        $customer_profile_pane_found = TRUE;
+        break;
+      }
+    }
+
+    // If there are customer prfoiles pane on that page, we need to perform
+    // Address validation.
+    if ($customer_profile_pane_found) {
+      $form['#attributes']['class'][] = 'commerce-checkout-form';
+      $form['#attached']['library'][] = array('system', 'ui.dialog');
+      $module_path = drupal_get_path('module', 'commerce_avalara');
+      $form['#attached']['js'][] = $module_path . '/js/commerce_avalara.js';
+      $form['#attached']['css'][] = $module_path . '/css/commerce_avalara_checkout.css';
+      $form['address_validation_result'] = array(
+        '#type' => 'container',
+        '#prefix' => '<div id="commerce-avalara-address-validation-wrapper">',
+        '#suffix' => '</div>',
+      );
+
+      $form['buttons']['continue']['#validate'][] = 'commerce_avalara_checkout_validate';
+      $form['buttons']['continue']['#ajax'] = array(
+        'callback' => 'commerce_avalara_validate_shipping_address_ajax_callback',
+      );
+    }
+  }
+}
+
+/**
+ * Custom Ajax callback for setting up address validation popup.
+ */
+function commerce_avalara_validate_shipping_address_ajax_callback($form, &$form_state) {
+  $commands = array();
+
+  // See commerce_avalara_checkout_validate().
+  if (!empty($form_state['commerce_avalara_address_validation_failed'])) {
+    if (!empty($form_state['commerce_avalara_address_validation_result'])) {
+      $validation_result = $form_state['commerce_avalara_address_validation_result'];
+      $buttons = array();
+
+      if ($validation_result['result'] == 'invalid') {
+        $buttons[] = array(
+          'code' => 'invalid',
+          'text' => t('Let me change the address'),
+        );
+      }
+      elseif ($validation_result['result'] == 'needs_correction') {
+        $buttons[] = array(
+          'code' => 'recommended',
+          'text' => t('Use recommended'),
+        );
+        $buttons[] = array(
+          'code' => 'keep_address',
+          'text' => t('Use as entered'),
+        );
+        $buttons[] = array(
+          'code' => 'invalid',
+          'text' => t('Let me change the address'),
+        );
+      }
+
+      $commands[] = array(
+        'command' => 'address_modal_display',
+        'html' => $validation_result['msg'],
+        'buttons' => $buttons,
+        'selector' => '#commerce-avalara-address-validation-wrapper',
+      );
+    }
+  }
+
+  return array('#type' => 'ajax', '#commands' => $commands);
+}
+
+/**
+ * Checkout form validation callback.
+ */
+function commerce_avalara_checkout_validate($form, &$form_state) {
+  // If the rebuild flag is set to TRUE by Commerce Checkout skip the address
+  // validation.
+  if (!empty($form_state['rebuild'])) {
+    return;
+  }
+  $customer_profile_to_validate = variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'commerce_avalara_tax_address', 'shipping');
+
+  if ($customer_profile_to_validate == 'shipping') {
+    $customer_profile_to_validate = module_exists('commerce_shipping') ? 'shipping' : 'billing';
+  }
+
+  $pane_id = 'customer_profile_' . $customer_profile_to_validate;
+  if ($field_name = variable_get('commerce_' . $pane_id . '_field', '')) {
+    // The form state order object is stale, we need to reload it.
+    $order = commerce_order_load($form_state['order']->order_id);
+
+    if (!empty($order->{$field_name})) {
+      $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+
+      if (isset($order_wrapper->{$field_name}->commerce_customer_address)) {
+        $address = $order_wrapper->{$field_name}->commerce_customer_address->value();
+        $city = $address['locality'];
+        $state = $address['administrative_area'];
+        $country = $address['country'];
+        $postal_code = $address['postal_code'];
+        $line1 = $address['thoroughfare'];
+        $line2 = isset($address['premise']) ? $address['premise'] : '';
+        $enabled_countries = variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'address_validate_countries', array('US'));
+
+        if (!is_array($enabled_countries)) {
+          $enabled_countries = array($enabled_countries);
+        }
+
+        if (!in_array($country, $enabled_countries)) {
+          return;
+        }
+        // Include the address validation functions.
+        module_load_include('inc', 'commerce_avalara', 'includes/commerce_avalara.address');
+        $args = compact('line1', 'line2', 'city', 'state', 'country', 'postal_code');
+        $validated_address = commerce_avalara_validate_address($args);
+        if ($validated_address === NULL) {
+          return;
+        }
+        $result = commerce_avalara_address_compare($args, $validated_address);
+
+        if ($result['result'] != 'valid') {
+          $form_state['commerce_avalara_address_validation_failed'] = TRUE;
+          $form_state['commerce_avalara_address_validation_result'] = $result;
+          $form_state['rebuild'] = TRUE;
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Returns address suggestion form.
+ */
+function commerce_avalara_address_suggestion_form($form, &$form_state, $original_address, $suggestions) {
+  if (count($suggestions) == 1) {
+    $form['info'] = array(
+      '#type' => 'markup',
+      '#markup' => '<p>' . t('Your shipping address is different from the post office records. We suggest you accept the recommended address to avoid shipping delays.') . '</p>',
+    );
+  }
+  else {
+    $form['info'] = array(
+      '#type' => 'markup',
+      '#markup' => '<p>' . t('Your shipping address is different from the post office records. We suggest you accept one of the recommended addresses to avoid shipping delays.') . '</p>',
+    );
+  }
+  $form['orignal_addr'] = array(
+    '#type' => 'markup',
+    '#markup' => '<p>' . t('Entered address is:') . '</p>' . theme('commerce_avalara_address', array('address' => $original_address)),
+  );
+  $options = array();
+  foreach ($suggestions as $address) {
+    $options[] = theme('commerce_avalara_address', array(
+      'address' => $address,
+    ));
+  }
+  $form['addresses'] = array(
+    '#title' => t('Recommended address'),
+    '#type' => 'radios',
+    '#options' => $options,
+    '#default_value' => '0',
+  );
+
+  return $form;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function commerce_avalara_theme() {
+  return array(
+    'commerce_avalara_address' => array(
+      'variables' => array(
+        'address' => array(),
+      ),
+    ),
+  );
+}
+
+/**
+ * Format address array to be used in the address suggestion form.
+ */
+function theme_commerce_avalara_address($variables) {
+  $address = $variables['address'];
+  $components = array($address['line1']);;
+
+  if (!empty($address['line2'])) {
+    $components[] = $address['line2'];
+  }
+
+  $components[] = $address['city'];
+  $components[] = $address['state'] . ' ' . $address['postal_code'];
+  $components[] = $address['country'];
+
+  return implode('<br/>', $components);
+}
+
+/**
+ * Sends HTTP GET request to endpoint.
+ * Copied from Commerce Avatax (Needs to be modified).
+ *
+ * @return array
+ *   Returns an associative array containing 'meta' and 'body' elements.
+ */
+function commerce_avalara_v1_address_request($endpoint, $parameters) {
+  $querystring = '';
+  if (is_array($parameters)) {
+    $querystring = drupal_http_build_query($parameters);
+    $querystring = str_replace("amp;", "", $querystring);
+  }
+  $curl_opts = array(
+    // Return result instead of echoing.
+    CURLOPT_RETURNTRANSFER => TRUE,
+    // Follow redirects, Location: headers.
+    CURLOPT_FOLLOWLOCATION => FALSE,
+    // But dont redirect more than 10 times.
+    CURLOPT_MAXREDIRS => 10,
+    // Abort if network connection takes more than 5 seconds.
+    CURLOPT_CONNECTTIMEOUT => 10,
+    CURLOPT_SSL_VERIFYPEER => TRUE,
+  );
+  $api_mode = commerce_avalara_api_mode();
+  $account_number = commerce_avalara_account_number();
+  $license_key = commerce_avalara_license_key();
+
+  if ($api_mode == COMMERCE_AVALARA_DEVELOPMENT_MODE) {
+    $base_url = 'https://development.avalara.net/1.0';
+  }
+  elseif ($api_mode == COMMERCE_AVALARA_PRODUCTION_MODE) {
+    $base_url = 'https://rest.avalara.net/1.0';
+  }
+
+  $curl_opts[CURLOPT_HTTPHEADER] = array(
+    'Content-Type: text/json',
+    'Authorization: Basic ' . base64_encode("$account_number:$license_key"),
+    'Date: ' . date(DATE_RFC1123, REQUEST_TIME),
+  );
+
+  $url = rtrim($base_url, '/') . '/' . ltrim($endpoint, '/');
+  if ($querystring) {
+    $url .= '?' . $querystring;
+  }
+  $curl = curl_init($url);
+  foreach ($curl_opts as $opt => $val) {
+    curl_setopt($curl, $opt, $val);
+  }
+
+  $body = curl_exec($curl);
+  $meta = curl_getinfo($curl);
+  curl_close($curl);
+
+  if ($body === FALSE) {
+    watchdog('commerce_avalara', 'AvaTax request failed. message: %msg', array(
+      '%msg' => curl_error($curl)), WATCHDOG_ERROR);
+    return array(
+      'body' => '',
+      'meta' => $meta,
+    );
+  }
+
+  // Check if the detailed logging is enabled.
+  if (variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'enable_logging', FALSE)) {
+    watchdog('commerce_avalara', 'Request info: !url !headers !response !meta', array(
+      '!url' => "<pre>URL : $url</pre>",
+      '!headers' => "<pre>Request Headers:\n" . var_export($curl_opts[CURLOPT_HTTPHEADER], TRUE) . '</pre>',
+      '!response' => "<pre>Response:\n" . check_plain(var_export($body, TRUE)) . '</pre>',
+      '!meta' => "<pre>Response Meta:\n" . var_export($meta, TRUE) . '</pre>',
+    ), WATCHDOG_DEBUG);
+  }
+
+  if ($body) {
+    $body_parsed = json_decode($body, TRUE);
+    return array(
+      'body' => $body_parsed,
+      'meta' => $meta,
+    );
+  }
+  else {
+    return array(
+      'body' => '',
+      'meta' => $meta,
+    );
+  }
+}
