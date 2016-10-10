@@ -49,13 +49,14 @@ function commerce_avalara_create_transaction($order) {
 
   // Prepare the Request Body.
   $request_body = array(
-    'type' => 'SalesOrder',
+    // TODO: Investigate why the SalesOrder request fails.
+    'type' => 'SalesInvoice',
+    'companyCode' => $company_code,
     'date' => format_date(REQUEST_TIME, 'custom', 'c'),
     // TODO: Probably generate a unique code.
     'code' => 'DC-' . $order->order_id,
     'customerCode' => $customer_code,
     'currencyCode' => $order_wrapper->commerce_order_total->currency_code->value(),
-    'companyCode' => $company_code,
     'addresses' => array(),
   );
 
@@ -193,7 +194,7 @@ function commerce_avalara_create_transaction($order) {
       return FALSE;
     }
 
-    return $request['result'];
+    return $request;
   }
   else {
     drupal_set_message(t("AvaTax did not get a response."), 'error');

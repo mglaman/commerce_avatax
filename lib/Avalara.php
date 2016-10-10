@@ -278,23 +278,31 @@ class Avatax {
       $fields = json_encode($fields);
       curl_setopt($this->ch, CURLOPT_POSTFIELDS, $fields);
       // Log the API request with the JSON encoded fields.
-      $this->logMessage($method . ' ' . $url . "\n\n" . $fields);
-    }
-    else {
-      // Log the API request without fields.
-      $this->logMessage($method . ' ' . $url);
     }
     $result = curl_exec($this->ch);
-    $status_code = curl_getinfo($this->ch, CURLINFO_HTTP_CODE);
-    $success = $status_code === 200;
-    $this->logMessage("@code response\n\n@result", array('@code' => $status_code, '@result' => $result));
-    if ($status_code != '200') {
-      $result = 'Error ' . $status_code;
+    $response_code = curl_getinfo($this->ch, CURLINFO_HTTP_CODE);
+    $success = in_array($response_code, array(200, 201));
+
+    // Log information about the request.
+    $this->logMessage('Request info: !url !headers !response !meta', array(
+      '!url' => "<pre>URL : $method $url</pre>",
+      '!headers' => "<pre>Request Headers:\n" . var_export(curl_getinfo($this->ch, CURLOPT_HTTPHEADER), TRUE) . '</pre>',
+      '!response' => "<pre>Response:\n" . check_plain(var_export($result, TRUE)) . '</pre>',
+      '!meta' => "<pre>Response Meta:\n" . var_export(curl_getinfo($this->ch), TRUE) . '</pre>',
+    ));
+
+    if (!$success) {
+      $result = 'Error ' . $response_code;
     }
-    elseif ($status_code == '200' && !empty($result)) {
+    elseif ($success && !empty($result)) {
       $result = json_decode($result, TRUE);
     }
-    return array('success' => $success, 'result' => $result);
+
+    return array(
+      'success' => $success,
+      'result' => $result,
+      'response_code' => $response_code,
+    );
   }
 
 }

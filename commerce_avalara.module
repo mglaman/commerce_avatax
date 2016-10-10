@@ -184,7 +184,7 @@ function commerce_avalara_commerce_price_component_type_info() {
   // Define a generic AvaTax price component type.
   $components['avalara_sales_tax'] = array(
     'title' => t('AvaTax sales tax'),
-    'display_title' => variable_get('commerce_avalara_price_component_title', t('Sales tax')),
+    'display_title' => variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'price_component_title', t('Sales tax')),
     'weight' => 25,
   );
 
@@ -195,8 +195,8 @@ function commerce_avalara_commerce_price_component_type_info() {
  * Returns the title of an AvaTax line item.
  */
 function commerce_avalara_line_item_title($line_item) {
-  if (!empty($line_item->data['avatax']['display_title'])) {
-    return $line_item->data['avatax']['display_title'];
+  if (!empty($line_item->data['commerce_avalara']['display_title'])) {
+    return $line_item->data['commerce_avalara']['display_title'];
   }
   return t('Sales Tax');
 }
@@ -235,6 +235,7 @@ function commerce_avalara_line_item_new($tax_price, $order_id = 0, $data = array
     'type' => 'avalara_sales_tax',
     'order_id' => $order_id,
     'quantity' => 1,
+    'line_item_label' => t('Sales Tax'),
     'data' => $data,
   ));
 
@@ -282,6 +283,43 @@ function commerce_avalara_calculate_sales_tax($order) {
   }
   module_load_include('inc', 'commerce_avalara', 'includes/commerce_avalara.calc');
   $request = commerce_avalara_create_transaction($order);
+
+  // Parse the result request.
+  if ($request['success'] && isset($request['result'][0])) {
+    $result = $request['result'][0];
+    $tax_price = array(
+      'amount' => commerce_currency_decimal_to_amount($result['totalTax'], $result['currencyCode']),
+      'currency_code' => $result['currencyCode'],
+      'data' => array(),
+    );
+    $data['commerce_avalara']['transaction_id'] = $result['id'];
+    // Create a new Sales tax line item with the calculated rate.
+    $line_item = commerce_avalara_line_item_new($tax_price, $order->order_id, $data);
+    $order->data['commerce_avalara'] = $data['commerce_avalara'];
+    commerce_avalara_add_sales_tax_line_item($line_item, $order);
+  }
+}
+
+/**
+ * Adds an AvaTax line item to an order, and saves the order.
+ *
+ * @param object $line_item
+ *   An unsaved avatax line item that should be added to the order.
+ * @param object $order
+ *   The order to add the avatax line item to.
+ */
+function commerce_avalara_add_sales_tax_line_item($line_item, $order) {
+  // Delete any existing AvaTax line items from the order.
+  commerce_avalara_delete_sales_tax_line_items($order, TRUE);
+
+  // Save the incoming line item now so we get its ID.
+  commerce_line_item_save($line_item);
+
+  // Add it to the order's line item reference value.
+  $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+  $order_wrapper->commerce_line_items[] = $line_item;
+
+  commerce_order_calculate_total($order);
 }
 
 /**
@@ -315,8 +353,10 @@ function commerce_avalara_check_address($order, $customer_profile_field) {
  *
  * @param object $order
  *   The order object to delete the line items from.
+ * @param $skip_save
+ *   Boolean indicating whether or not to skip saving the order in this function.
  */
-function commerce_avalara_delete_sales_tax_line_items($order) {
+function commerce_avalara_delete_sales_tax_line_items($order, $skip_save = FALSE) {
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
 
   // When deleting more than one line item, metadata_wrapper will give problems
@@ -325,7 +365,7 @@ function commerce_avalara_delete_sales_tax_line_items($order) {
   $line_item_ids = array();
 
   foreach ($order_wrapper->commerce_line_items as $delta => $line_item_wrapper) {
-    // If this line item is an avatax line item...
+    // If this line item is a Sales tax line item...
     if ($line_item_wrapper->type->value() == 'avalara_sales_tax') {
       // Store its ID for later deletion and remove the reference from the line
       // item reference field.
@@ -334,8 +374,13 @@ function commerce_avalara_delete_sales_tax_line_items($order) {
     }
   }
 
-  // If we found any AvaTax line items.
+  // If we found any Sales Tax? line items.
   if (!empty($line_item_ids)) {
+    // First save the order to update the line item reference field value.
+    if (!$skip_save) {
+      commerce_order_save($order);
+    }
+
     // Then delete the line items.
     commerce_line_item_delete_multiple($line_item_ids);
   }

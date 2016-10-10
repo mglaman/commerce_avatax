@@ -26,7 +26,7 @@ function commerce_avalara_default_rules_configuration() {
   $rule->label = 'Delete AvaTax line items from order';
   $rule->active = TRUE;
   $rule->weight = -1;
-  $rule->event('commerce_order_presave');
+  $rule->event('commerce_order_update');
   $rule->condition(rules_condition('data_is', array(
     'data:select' => 'commerce-order:status',
     'op' => 'IN',
