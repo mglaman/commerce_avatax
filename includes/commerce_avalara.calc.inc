@@ -132,12 +132,9 @@ function commerce_avalara_create_transaction($order) {
         'taxCode' => $tax_code,
         'quantity' => $line_item->quantity,
         'amount' => $line_item_wrapper->commerce_total->amount_decimal->value(),
-        /*'Discounted' => 'true',
-        'Ref1' => '',
-        'Ref2' => '',
-        'CustomerUsageType' => '',
-        'OriginCode' => 0,
-        'DestinationCode' => 1,*/
+        // The discounted boolean needs to be set to TRUE, otherwise, discount
+        // document level won't be applied.
+        'discounted' => 'true',
       );
     }
     elseif ($line_item->type === 'shipping') {
@@ -151,11 +148,6 @@ function commerce_avalara_create_transaction($order) {
         'quantity' => $line_item->quantity,
         'amount' => $line_item_wrapper->commerce_total->amount_decimal->value(),
         'discounted' => 'false',
-        /*'Ref1' => '',
-        'Ref2' => '',
-        'CustomerUsageType' => '',
-        'OriginCode' => 0,
-        'DestinationCode' => 1,*/
       );
     }
     elseif ($line_item->type === 'commerce_coupon') {
@@ -168,15 +160,10 @@ function commerce_avalara_create_transaction($order) {
         'quantity' => $line_item->quantity,
         'amount' => $line_item_wrapper->commerce_total->amount_decimal->value(),
         'discounted' => 'false',
-        /*'Ref1' => '',
-        'Ref2' => '',
-        'CustomerUsageType' => '',
-        'OriginCode' => 0,
-        'DestinationCode' => 1,*/
       );
     }
     elseif ($line_item->type === 'commerce_discount') {
-      $request_body['discount'] = (($line_item_wrapper->commerce_unit_price->amount->value() / 100) * $line_item->quantity) * -1;
+      $request_body['discount'] = $line_item_wrapper->commerce_total->amount_decimal->value() * -1;
     }
   }
   $request_body['lines'] = $lines;
@@ -187,17 +174,14 @@ function commerce_avalara_create_transaction($order) {
 
     // TODO: Map the error code to a meaningful message.
     if (empty($request['success'])) {
-      drupal_set_message(t('AvaTax error: %msg', array(
-        '%msg' => $request['result'],
-      )), 'error');
-
+      drupal_set_message(t('Could not calculate the Sales Tax'), 'error');
       return FALSE;
     }
 
     return $request;
   }
   else {
-    drupal_set_message(t("AvaTax did not get a response."), 'error');
+    drupal_set_message(t('Could not calculate the Sales Tax'), 'error');
     return FALSE;
   }
 }

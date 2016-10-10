@@ -26,29 +26,7 @@ function commerce_avalara_rules_action_info() {
       'group' => t('Commerce AvaTax'),
       'parameter' => $parameter,
     ),
-    'commerce_avalara_commit_transaction' => array(
-      'label' => t('Change status of sales tax to COMMITTED in AvaTax'),
-      'group' => t('Commerce AvaTax'),
-      'parameter' => $parameter,
-    ),
-    'commerce_avalara_void_transaction' => array(
-      'label' => t('Change status of sales tax to VOIDED in AvaTax'),
-      'group' => t('Commerce AvaTax'),
-      'parameter' => $parameter,
-    ),
   );
 
   return $actions;
-}
-
-/**
- * COMMIT AvaTax transaction for a given $order.
- */
-function commerce_avalara_commit_transaction($order) {
-}
-
-/**
- * VOID AvaTax transaction for $order.
- */
-function commerce_avalara_void_transaction($order) {
 }

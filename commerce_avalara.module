@@ -293,6 +293,7 @@ function commerce_avalara_calculate_sales_tax($order) {
       'data' => array(),
     );
     $data['commerce_avalara']['transaction_id'] = $result['id'];
+    $data['commerce_avalara']['transaction_code'] = $result['code'];
     // Create a new Sales tax line item with the calculated rate.
     $line_item = commerce_avalara_line_item_new($tax_price, $order->order_id, $data);
     $order->data['commerce_avalara'] = $data['commerce_avalara'];
@@ -400,4 +401,40 @@ function commerce_avalara_email_to_username($user_email) {
   $name = trim(substr($name, 0, USERNAME_MAX_LENGTH - 4));
 
   return $name;
+}
+
+/**
+ * Implements hook_commerce_payment_order_paid_in_full().
+ *
+ * Commit transaction when an order is paid in full.
+ */
+function commerce_avalara_commerce_payment_order_paid_in_full($order) {
+  commerce_avalara_commit_transaction($order);
+}
+
+/**
+ * COMMIT AvaTax transaction for a given $order.
+ */
+function commerce_avalara_commit_transaction($order) {
+  if (isset($order->data['commerce_avalara']['transaction_code']) && $avalara = commerce_avalara_object()) {
+    $company_code = commerce_avalara_company_code();
+    if (!empty($company_code)) {
+      $avalara->transactionsCommit($company_code, $order->data['commerce_avalara']['transaction_code']);
+    }
+  }
+}
+
+/**
+ * VOID AvaTax transaction for $order.
+ */
+function commerce_avalara_void_transaction($order) {
+  if (isset($order->data['commerce_avalara']['transaction_code']) && $avalara = commerce_avalara_object()) {
+    $company_code = commerce_avalara_company_code();
+    if (!empty($company_code)) {
+      $parameters = array(
+        'code' => 'Cancelling the order',
+      );
+      $avalara->transactionsVoid($company_code, $order->data['commerce_avalara']['transaction_code'], $parameters);
+    }
+  }
 }
