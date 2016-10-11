@@ -491,14 +491,69 @@ function commerce_avalara_form_alter(&$form, &$form_state, $form_id) {
       $form['#attached']['css'][] = $module_path . '/css/commerce_avalara_checkout.css';
       $form['address_validation_result'] = array(
         '#type' => 'container',
-        '#prefix' => '<div id="commerce-avalara-address-validation-wrapper">',
-        '#suffix' => '</div>',
+        '#id' => 'commerce-avalara-address-validation-wrapper',
       );
 
-      $form['buttons']['continue']['#validate'][] = 'commerce_avalara_checkout_validate';
-      $form['buttons']['continue']['#ajax'] = array(
-        'callback' => 'commerce_avalara_validate_shipping_address_ajax_callback',
+      // Since we're preventing the default form submit, we need our custom
+      // button to call the checkout continue validate functions.
+      $validate_handlers = $form['buttons']['continue']['#validate'];
+      $validate_handlers[] = 'commerce_avalara_checkout_validate';
+      array_unshift($form['buttons']['continue']['#submit'], 'commerce_avalara_address_suggestion_apply');
+      // This submit button will be clicked when the main form is submitted.
+      $form['buttons']['validate-address'] = array(
+        '#value' => t('Validate address'),
+        '#type' => 'submit',
+        '#attributes' => array(
+          'class' => array('element-invisible'),
+        ),
+        '#id' => 'commerce-avalara-address-validate-btn',
+        '#validate' => $validate_handlers,
+        '#ajax' => array(
+          'callback' => 'commerce_avalara_validate_shipping_address_ajax_callback',
+          'progress' => array('type' => 'none'),
+        ),
       );
+      // Store the address suggestion delta in order to use it.
+      $form['use_suggested_address'] = array(
+        '#type' => 'hidden',
+      );
+    }
+  }
+}
+
+/**
+ * Submit handler for the continue button of the checkout form.
+ * Apply the address suggestion if selected in the Jquery Dialog.
+ */
+function commerce_avalara_address_suggestion_apply($form, &$form_state) {
+  // If a suggestion has been selected in the Jquery Dialog, update the customer
+  // profile fields.
+  if (isset($form_state['commerce_avalara']) && !empty($form_state['values']['use_suggested_address'])) {
+    $settings = $form_state['commerce_avalara'];
+    $address_suggestion = reset($settings['address_validation_result']['suggestions']);
+
+    // Load the customer profile to update.
+    if ($profile = commerce_customer_profile_load($settings['customer_profile_to_update'])) {
+      $profile_wrapper = entity_metadata_wrapper('commerce_customer_profile', $profile);
+
+      foreach ($address_suggestion as $key => $value) {
+        $profile_wrapper->commerce_customer_address->{$key} = $value;
+      }
+      $profile_wrapper->save();
+
+      // If the profile ID has been updated, we need to update the order's
+      // reference.
+      if ($settings['customer_profile_to_update'] != $profile->profile_id) {
+        $pane_id = 'customer_profile_' . $profile->type;
+
+        if ($field_name = variable_get('commerce_' . $pane_id . '_field', '')) {
+          $order = commerce_order_load($form_state['order']->order_id);
+          $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+
+          $order_wrapper->{$field_name} = $profile->profile_id;
+          commerce_order_save($order);
+        }
+      }
     }
   }
 }
@@ -510,9 +565,9 @@ function commerce_avalara_validate_shipping_address_ajax_callback($form, &$form_
   $commands = array();
 
   // See commerce_avalara_checkout_validate().
-  if (!empty($form_state['commerce_avalara_address_validation_failed'])) {
-    if (!empty($form_state['commerce_avalara_address_validation_result'])) {
-      $validation_result = $form_state['commerce_avalara_address_validation_result'];
+  if (isset($form_state['commerce_avalara']) && !empty($form_state['commerce_avalara']['address_validation_failed'])) {
+    if (!empty($form_state['commerce_avalara']['address_validation_result'])) {
+      $validation_result = $form_state['commerce_avalara']['address_validation_result'];
       $buttons = array();
 
       if ($validation_result['result'] == 'invalid') {
@@ -544,6 +599,10 @@ function commerce_avalara_validate_shipping_address_ajax_callback($form, &$form_
       );
     }
   }
+  else {
+    // We need to unblock the form submission.
+    $commands[] = ajax_command_invoke(NULL, 'commerceAvalaraUnblockCheckout', array());
+  }
 
   return array('#type' => 'ajax', '#commands' => $commands);
 }
@@ -557,51 +616,54 @@ function commerce_avalara_checkout_validate($form, &$form_state) {
   if (!empty($form_state['rebuild'])) {
     return;
   }
-  $customer_profile_to_validate = variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'commerce_avalara_tax_address', 'shipping');
+  $form_state['commerce_avalara'] = array();
+  $profile_type = variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'commerce_avalara_tax_address', 'shipping');
 
-  if ($customer_profile_to_validate == 'shipping') {
-    $customer_profile_to_validate = module_exists('commerce_shipping') ? 'shipping' : 'billing';
+  // Validate the shipping profile if possible.
+  if ($profile_type === 'shipping') {
+    $profile_type = module_exists('commerce_shipping') ? 'shipping' : 'billing';
   }
 
-  $pane_id = 'customer_profile_' . $customer_profile_to_validate;
+  $pane_id = 'customer_profile_' . $profile_type;
   if ($field_name = variable_get('commerce_' . $pane_id . '_field', '')) {
-    // The form state order object is stale, we need to reload it.
-    $order = commerce_order_load($form_state['order']->order_id);
-
-    if (!empty($order->{$field_name})) {
+    // Addressbook 3.x integration
+    // Check if the profile can be found in the $form_state object.
+    if (isset($form_state['pane_' . $pane_id]['profile'])) {
+      $profile_wrapper = entity_metadata_wrapper('commerce_customer_profile', $form_state['pane_' . $pane_id]['profile']);
+    }
+    else {
+      // The form state order object is stale, we need to reload it.
+      $order = commerce_order_load($form_state['order']->order_id);
       $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+      $profile_wrapper = $order_wrapper->{$field_name};
+    }
 
-      if (isset($order_wrapper->{$field_name}->commerce_customer_address)) {
-        $address = $order_wrapper->{$field_name}->commerce_customer_address->value();
-        $city = $address['locality'];
-        $state = $address['administrative_area'];
-        $country = $address['country'];
-        $postal_code = $address['postal_code'];
-        $line1 = $address['thoroughfare'];
-        $line2 = isset($address['premise']) ? $address['premise'] : '';
-        $enabled_countries = variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'address_validate_countries', array('US'));
+    if (isset($profile_wrapper->commerce_customer_address)) {
+      $address = $profile_wrapper->commerce_customer_address->value();
+      $country = $address['country'];
+      $enabled_countries = variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'address_validate_countries', array('US'));
 
-        if (!is_array($enabled_countries)) {
-          $enabled_countries = array($enabled_countries);
-        }
+      if (!is_array($enabled_countries)) {
+        $enabled_countries = array($enabled_countries);
+      }
 
-        if (!in_array($country, $enabled_countries)) {
-          return;
-        }
-        // Include the address validation functions.
-        module_load_include('inc', 'commerce_avalara', 'includes/commerce_avalara.address');
-        $args = compact('line1', 'line2', 'city', 'state', 'country', 'postal_code');
-        $validated_address = commerce_avalara_validate_address($args);
-        if ($validated_address === NULL) {
-          return;
-        }
-        $result = commerce_avalara_address_compare($args, $validated_address);
+      if (!in_array($country, $enabled_countries)) {
+        return;
+      }
+      // Include the address validation functions.
+      module_load_include('inc', 'commerce_avalara', 'includes/commerce_avalara.address');
+      $validated_address = commerce_avalara_validate_address($address);
+      if ($validated_address === NULL) {
+        return;
+      }
+      $result = commerce_avalara_address_compare($address, $validated_address);
 
-        if ($result['result'] != 'valid') {
-          $form_state['commerce_avalara_address_validation_failed'] = TRUE;
-          $form_state['commerce_avalara_address_validation_result'] = $result;
-          $form_state['rebuild'] = TRUE;
-        }
+      if ($result['result'] != 'valid') {
+        $form_state['commerce_avalara']['address_validation_failed'] = TRUE;
+        $form_state['commerce_avalara']['address_validation_result'] = $result;
+        // Store the customer profile ID to update.
+        $form_state['commerce_avalara']['customer_profile_to_update'] = $profile_wrapper->getIdentifier();
+        $form_state['rebuild'] = TRUE;
       }
     }
   }
@@ -628,8 +690,8 @@ function commerce_avalara_address_suggestion_form($form, &$form_state, $original
     '#markup' => '<p>' . t('Entered address is:') . '</p>' . theme('commerce_avalara_address', array('address' => $original_address)),
   );
   $options = array();
-  foreach ($suggestions as $address) {
-    $options[] = theme('commerce_avalara_address', array(
+  foreach ($suggestions as $key => $address) {
+    $options[$key] = theme('commerce_avalara_address', array(
       'address' => $address,
     ));
   }
@@ -657,18 +719,40 @@ function commerce_avalara_theme() {
 }
 
 /**
+ * Returns a mapping between the Addressfield names and the field names that
+ * need to be sent to the Avatax API.
+ */
+function commerce_avalara_address_fields_mapping($flip = FALSE) {
+  $mapping = array(
+    'locality' => 'City',
+    'administrative_area' => 'Region',
+    'country' => 'Country',
+    'postal_code' => 'PostalCode',
+    'thoroughfare' => 'Line1',
+    'premise' => 'Line2',
+  );
+
+  // Flip the keys/values if necessary.
+  if ($flip) {
+    $mapping = array_flip($mapping);
+  }
+
+  return $mapping;
+}
+
+/**
  * Format address array to be used in the address suggestion form.
  */
 function theme_commerce_avalara_address($variables) {
   $address = $variables['address'];
-  $components = array($address['line1']);;
+  $components = array($address['thoroughfare']);
 
-  if (!empty($address['line2'])) {
-    $components[] = $address['line2'];
+  if (!empty($address['premise'])) {
+    $components[] = $address['premise'];
   }
 
-  $components[] = $address['city'];
-  $components[] = $address['state'] . ' ' . $address['postal_code'];
+  $components[] = $address['locality'];
+  $components[] = $address['administrative_area'] . ' ' . $address['postal_code'];
   $components[] = $address['country'];
 
   return implode('<br/>', $components);

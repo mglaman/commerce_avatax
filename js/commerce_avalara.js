@@ -5,6 +5,9 @@
 
 (function($) {
 
+  var checkoutFormSelector = 'form[id^=commerce-checkout]';
+  var continueButtonsSelector = 'input.checkout-continue';
+  var suggestionInputSelector = 'input[name="use_suggested_address"]';
   // Make sure our objects are defined.
   Drupal.CommerceAvalara = Drupal.CommerceAvalara || {};
   Drupal.CommerceAvalara.Modal = Drupal.CommerceAvalara.Modal || {};
@@ -20,21 +23,35 @@
         buttons[delta] = {
           text:button.text,
           click: function() {
-            console.log(button);
-            console.log($(this));
             switch (button.code) {
               case 'invalid':
                 $(this).dialog('close');
+                $('span.checkout-processing').addClass('element-invisible');
+
+                // Remove the additional continue button added by
+                // commerce_checkout.
+                if ($(continueButtonsSelector).length > 1) {
+                  $(continueButtonsSelector).get(1).remove();
+                  $(continueButtonsSelector).show();
+                }
+                $(checkoutFormSelector).removeClass('avalara-processed');
                 break;
 
               case 'recommended':
                 $(this).dialog("close");
-                $('form.commerce-checkout-form').submit();
+                // Store the suggestion delta in a hidden input field located
+                // in the main checkout form.
+                if ($('input[name="addresses"]').length > 0) {
+                  if ($(suggestionInputSelector).length > 0) {
+                    $(suggestionInputSelector).val("1");
+                  }
+                }
+                $.fn.commerceAvalaraUnblockCheckout();
                 break;
 
               case 'keep_address':
                 $(this).dialog("close");
-                $('form.commerce-checkout-form').submit();
+                $.fn.commerceAvalaraUnblockCheckout();
                 break;
             }
           }
@@ -61,9 +78,30 @@
     $(response.selector).dialog.close();
   }
 
+  Drupal.behaviors.commerceAvalara = {
+    attach: function(context, settings) {
+      // Catch the submit, click our custom "Validate address" button.
+      $(checkoutFormSelector).submit(function(event) {
+        if (!$(this).hasClass('avalara-processed')) {
+          $('#commerce-avalara-address-validate-btn').trigger('mousedown');
+          event.preventDefault();
+          return false;
+        }
+      });
+    }
+  };
+
   $(function() {
     Drupal.ajax.prototype.commands.address_modal_display = Drupal.CommerceAvalara.Modal.modal_display;
     Drupal.ajax.prototype.commands.address_modal_dismiss = Drupal.CommerceAvalara.Modal.modal_dismiss;
   });
+
+  /**
+   * Unblock the checkout form submission.
+   */
+  $.fn.commerceAvalaraUnblockCheckout = function() {
+    $(checkoutFormSelector).addClass('avalara-processed');
+    $(continueButtonsSelector).click();
+  }
 
 }(jQuery));
