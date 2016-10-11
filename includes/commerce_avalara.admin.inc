@@ -245,6 +245,25 @@ function commerce_avalara_general_settings_form($form, &$form_state) {
     ),
     '#default_value' => commerce_avalara_product_version(),
   );
+  $form['general'][COMMERCE_AVALARA_VAR_PREFIX . 'product_types'] = array(
+    '#title' => t('Product types'),
+    '#type' => 'select',
+    '#multiple' => TRUE,
+    '#options' => commerce_product_type_get_name(),
+    '#default_value' => variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'product_types', array()),
+    '#description' => t('Which product types should have their taxes calculated by AvaTax? Leave empty to enable for all product types.'),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="' . COMMERCE_AVALARA_VAR_PREFIX  . 'product_version"]' => array('value' => COMMERCE_AVALARA_PRO_VERSION),
+      ),
+    ),
+  );
+  $form['general'][COMMERCE_AVALARA_VAR_PREFIX . 'exemptions_status'] = array(
+    '#title' => t('Administer Sales Tax Exemptions'),
+    '#description' => t('Enter sales tax exemption codes for registered users'),
+    '#type' => 'checkbox',
+    '#default_value' => variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'exemptions_status', 0),
+  );
   $form['general'][COMMERCE_AVALARA_VAR_PREFIX . 'tax_calculation_enabled'] = array(
     '#title' => t('Enable tax calculation?'),
     '#type' => 'checkbox',
@@ -256,8 +275,18 @@ function commerce_avalara_general_settings_form($form, &$form_state) {
     '#description' => t('Enables detailed AvaTax transaction logging.'),
     '#default_value' => variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'enable_logging', FALSE),
   );
+  $form = system_settings_form($form);
+  $form['#submit'][] = 'commerce_avalara_general_settings_form_submit';
 
-  return system_settings_form($form);
+  return $form;
+}
+
+/**
+ * Call the field refresh function.
+ */
+function commerce_avalara_general_settings_form_submit($form, &$form_state) {
+  module_load_install('commerce_avalara');
+  commerce_avalara_install_helper();
 }
 
 /**

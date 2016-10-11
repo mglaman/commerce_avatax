@@ -57,4 +57,168 @@ function commerce_avalara_install() {
       'vid' => $vocabulary->vid,
     ));
   }
+  commerce_avalara_install_helper();
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function commerce_avalara_uninstall() {
+  $fields_to_delete = array(
+    'avatax_code',
+    'avatax_exemption_code',
+  );
+  foreach ($fields_to_delete as $field_name) {
+    // Skip non existing fields.
+    if (!field_info_field($field_name)) {
+      continue;
+    }
+    field_delete_field($field_name);
+  }
+}
+
+/**
+ * Helper function to define and create the required fields & instances.
+ */
+function commerce_avalara_install_helper() {
+  drupal_load('module', 'commerce_avalara');
+  _commerce_avalara_configure_tax_code_field();
+  _commerce_avalara_configure_tax_exemption_field();
+}
+
+/**
+ * Configure the "avatax_code" field.
+ */
+function _commerce_avalara_configure_tax_code_field() {
+  $field_name = 'avatax_code';
+  $product_types = variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'product_types', array());
+
+  if (commerce_avalara_product_version() != COMMERCE_AVALARA_PRO_VERSION) {
+    return;
+  }
+
+  // By default add the avatax_code field to all product bundles.
+  if (empty($product_types)) {
+    $product_types = array_keys(commerce_product_types());
+  }
+  else {
+    $all_bundles = array_keys(commerce_product_types());
+    $types_to_remove = array_diff($all_bundles, $product_types);
+
+    foreach ($types_to_remove as $bundle) {
+      if ($instance = field_info_instance('commerce_product', $field_name, $bundle)) {
+        field_delete_instance($instance);
+      }
+    }
+  }
+
+  // Create the field type if it doesn't exist.
+  $field = field_info_field($field_name);
+  if (!$field) {
+    $field = field_create_field(array(
+      'cardinality' => 1,
+      'field_name' => $field_name,
+      'settings' => array(
+        'allowed_values' => array(
+          0 => array(
+            'vocabulary' => 'avatax_tax_codes',
+          ),
+        ),
+      ),
+      'type' => 'taxonomy_term_reference',
+    ));
+  }
+
+  // Create the field instance for the selected product types.
+  foreach ($product_types as $type) {
+    $instance = field_info_instance('commerce_product', $field_name, $type);
+    if (!$instance) {
+      field_create_instance(array(
+        'bundle' => $type,
+        // @todo: set default_value
+        'default_value' => NULL,
+        'display' => array(
+          'default' => array(
+            'type' => 'hidden',
+          ),
+          'teaser' => array(
+            'type' => 'hidden',
+          ),
+        ),
+        'entity_type' => 'commerce_product',
+        'field_name' => $field_name,
+        'label' => 'AvaTax code',
+        'required' => TRUE,
+        'widget' => array(
+          'module' => 'taxonomy',
+          'settings' => array(
+            'autocomplete_path' => 'taxonomy/autocomplete',
+            'size' => 60,
+          ),
+          'type' => 'taxonomy_autocomplete',
+          'weight' => -4,
+        ),
+      ));
+    }
+  }
+}
+
+/**
+ * Helper function : Configure the tax exemption field on users.
+ */
+function _commerce_avalara_configure_tax_exemption_field() {
+  $field_name = 'avatax_exemption_code';
+  $exemption_status = variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'exemptions_status', 0);
+
+  // Delete the field if it exist.
+  if (!$exemption_status) {
+    $instance = field_info_instance('user', $field_name, 'user');
+    if ($instance) {
+      field_delete_instance($instance);
+    }
+  }
+  else {
+    // Exemption status is YES.
+    // Create the field and instance if they do not exist.
+    $field = field_info_field($field_name);
+    if (!$field) {
+      field_create_field(array(
+        'cardinality' => 1,
+        'field_name' => $field_name,
+        'settings' => array(
+          'allowed_values_function' => 'commerce_avalara_exemption_codes_allowed_values',
+        ),
+        'type' => 'list_text',
+      ));
+    }
+    $instance = field_info_instance('user', $field_name, 'user');
+    if (!$instance) {
+      field_create_instance(array(
+        'bundle' => 'user',
+        'display' => array(
+          'default' => array(
+            'label' => 'above',
+            'module' => 'list',
+            'settings' => array(),
+            'type' => 'list_default',
+            'weight' => 0,
+          ),
+        ),
+        'entity_type' => 'user',
+        'field_name' => $field_name,
+        'label' => 'AvaTax Exemption Code',
+        'required' => 0,
+        'settings' => array(
+          'user_register_form' => 0,
+        ),
+        'widget' => array(
+          'active' => 1,
+          'module' => 'options',
+          'settings' => array(),
+          'type' => 'options_select',
+          'weight' => 7,
+        ),
+      ));
+    }
+  }
 }

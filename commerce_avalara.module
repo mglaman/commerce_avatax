@@ -845,3 +845,32 @@ function commerce_avalara_v1_address_request($endpoint, $parameters) {
     );
   }
 }
+
+/**
+ * Implements hook_flush_caches().
+ */
+function commerce_avalara_flush_caches() {
+  module_load_install('commerce_avalara');
+  commerce_avalara_install_helper();
+}
+
+/**
+ * Allowed values callback for exemption codes.
+ */
+function commerce_avalara_exemption_codes_allowed_values() {
+  return array(
+    'E' => 'Charitable or benevolent org',
+    'H' => 'Commercial agricultural production',
+    'J' => 'Direct pay permit',
+    'K' => 'Direct mail',
+    'A' => 'Federal government',
+    'D' => 'Foreign diplomat',
+    'I' => 'Industrial production / manufacturer',
+    'N' => 'Local government',
+    'B' => 'State government',
+    'C' => 'Tribe / Status Indian / Indian Band',
+    'F' => 'Religious or educational org',
+    'G' => 'Resale',
+    'L' => 'Other',
+  );
+}
