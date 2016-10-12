@@ -133,7 +133,8 @@ function commerce_avalara_credentials_settings_validate($form, &$form_state) {
 
   // Validate the credentials provided.
   if (!empty($account_number) && !empty($license_key)) {
-    if ($avalara = commerce_avalara_object($account_number, $license_key, $api_mode)) {
+    $api_key = base64_encode("$account_number:$license_key");
+    if ($avalara = commerce_avalara_object($api_key, $api_mode)) {
       $ping_request = $avalara->ping();
 
       if ($ping_request['success'] && !empty($ping_request['result']['authenticated'])) {

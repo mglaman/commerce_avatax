@@ -120,43 +120,43 @@ function commerce_avalara_license_key() {
 /**
  * Returns a statically cached instance of an Avatax object.
  *
- * @param string $account_number
- *   The Avalara account number that is used to authenticate against the API.
- * @param string $license_key
- *   The Avalara license key that is used to authenticate against the API.
+ * @param string $api_key
+ *   The API key to use to submit requests to the Avatax API.
+ * @param string $api_mode
+ *   The passed API module will determine the base url of the API.
  *
  * @return Avatax|bool.
  *   The constructed Avatax object or FALSE if the library could not be loaded..
  */
-function commerce_avalara_object($account_number = '', $license_key = '') {
-  $avalara = &drupal_static(__FUNCTION__);
+function commerce_avalara_object($api_key = '', $api_mode = '') {
+  $avalara = &drupal_static(__FUNCTION__, array());
 
-  // If the account number or the license key weren't provided,
-  if (empty($account_number) || empty($license_key)) {
+  // If the Api key wasn't provided.
+  if (empty($api_key)) {
     $account_number = commerce_avalara_account_number();
     $license_key = commerce_avalara_license_key();
+
+    if (!empty($account_number) && !empty($license_key)) {
+      $api_key = base64_encode("$account_number:$license_key");
+    }
+    else {
+      return FALSE;
+    }
   }
 
-  // If the account number or license key is still empty, return FALSE.
-  if (empty($account_number) || empty($license_key)) {
-    return FALSE;
-  }
-
-  // Retrieve the configured API mode (dev|prod).
-  $api_mode = commerce_avalara_api_mode();
-
-  if (!isset($avalara)) {
+  if (!isset($avalara[$api_key])) {
     $logger = NULL;
+    $api_mode = empty($api_mode) ? commerce_avalara_api_mode() : $api_mode;
 
     // Specify the logger if the logging was enabled.
     if (variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'enable_logging', FALSE)) {
       $logger = 'watchdog';
     }
 
-    $avalara[$api_mode] = new Avatax($account_number, $license_key, $api_mode, $logger);
+    $avalara[$api_key] = new Avatax($api_key, $api_mode, $logger);
   }
 
-  return $avalara[$api_mode];
+  return $avalara[$api_key];
 }
 
 /**

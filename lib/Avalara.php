@@ -29,11 +29,8 @@ class Avatax {
   // Defines the base URL of the API.
   protected $baseUrl;
 
-  // The Avalara account number that is used to authenticate against the API.
-  protected $accountNumber;
-
-  // The Avalara account number that is used to authenticate against the API.
-  protected $licenseKey;
+  // Define properties for storing API credentials.
+  protected $apiKey;
 
   // The API mode (dev|prod).
   protected $apiMode;
@@ -46,21 +43,17 @@ class Avatax {
 
   /**
    * Initializes the API credential properties and cURL handle.
-   *
-   * @param string $accountNumber
-   *   The Avalara account number that is used to authenticate against the API.
-   * @param string $licenseKey
-   *   The Avalara license key that is used to authenticate against the API.
+   * @param string $apiKey
+   *   The API key defined that is used to authenticate against the API.
    * @param string $apiMode
    *   The API mode (dev|prod), used to determine the endpoint to call.
    * @param string $logger
    *   A callable used to log API request / response messages. Leave empty if
    *   logging is not needed.
    */
-  public function __construct($accountNumber, $licenseKey, $apiMode = 'dev', $logger = NULL) {
+  public function __construct($apiKey, $apiMode = 'dev', $logger = NULL) {
     // Initialize the API credential properties.
-    $this->accountNumber = $accountNumber;
-    $this->licenseKey = $licenseKey;
+    $this->apiKey = $apiKey;
     $this->apiMode = $apiMode;
     $this->logger = $logger;
     $this->setBaseUrl();
@@ -103,23 +96,13 @@ class Avatax {
   }
 
   /**
-   * Returns the object's account number.
+   * Returns the object's API key.
    *
    * @return string
-   *   The Account number.
+   *   The API key.
    */
-  public function getAccountNumber() {
-    return $this->accountNumber;
-  }
-
-  /**
-   * Returns the object's license key.
-   *
-   * @return string
-   *   The License key.
-   */
-  public function getLicenseKey() {
-    return $this->licenseKey;
+  public function getApiKey() {
+    return $this->apiKey;
   }
 
   /**
@@ -215,7 +198,7 @@ class Avatax {
   public function setDefaultCurlOptions() {
     curl_setopt($this->ch, CURLOPT_HEADER, FALSE);
     curl_setopt($this->ch, CURLOPT_HTTPHEADER, array(
-      'Authorization: Basic ' . base64_encode($this->getAccountNumber() . ':' . $this->getLicenseKey()),
+      'Authorization: Basic ' . $this->getApiKey(),
       'Content-Type: application/json',
     ));
     curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, TRUE);
