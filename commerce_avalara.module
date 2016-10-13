@@ -440,6 +440,17 @@ function commerce_avalara_commit_transaction($order) {
 }
 
 /**
+ * Implements hook_commerce_order_delete().
+ *
+ * Void an Avatax transaction when an order is being deleted.
+ * TODO: Probably create a queueItem in case multiple orders are deleted at
+ * once?
+ */
+function commerce_avalara_commerce_order_delete($order) {
+  commerce_avalara_void_transaction($order);
+}
+
+/**
  * VOID AvaTax transaction for $order.
  */
 function commerce_avalara_void_transaction($order) {
