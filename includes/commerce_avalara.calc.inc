@@ -284,6 +284,18 @@ function commerce_avalara_calculate_vat_line_item($line_item) {
     ),
   );
 
+  // Check if the user has a VAT ID field.
+  if (!empty($order->uid)) {
+    $order_wrapper = $line_item_wrapper->order;
+    if (isset($order_wrapper->owner->avalara_vat_id)) {
+      $vat_id = $order_wrapper->owner->avalara_vat_id->value();
+
+      if (!empty($vat_id)) {
+        $request_body['businessIdentificationNo'] = $vat_id;
+      }
+    }
+  }
+
   // Not sure which code we should generate here.
   $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
   $code = 'SKU-' . $line_item_wrapper->commerce_product->sku->value();

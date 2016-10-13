@@ -490,7 +490,27 @@ function commerce_avalara_global_vat_settings_form($form, &$form_state) {
     '#required' => TRUE,
     '#options' => array_diff_key($countries, $countries_to_exclude),
     '#default_value' => variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'vat_ship_to_country', ''),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="' . COMMERCE_AVALARA_VAR_PREFIX  . 'vat_calculation_enabled"]' => array('checked' => TRUE),
+      ),
+    ),
+  );
+  $form['global-vat'][COMMERCE_AVALARA_VAR_PREFIX . 'add_vat_field'] = array(
+    '#title' => t('Allow customers to supply a VAT ID for tax-exemptions'),
+    '#description' => t('Customers will be able to supply a VAT ID that is submitted as their business identification number.'),
+    '#type' => 'checkbox',
+    '#default_value' => variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'add_vat_field', FALSE),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="' . COMMERCE_AVALARA_VAR_PREFIX  . 'vat_calculation_enabled"]' => array('checked' => TRUE),
+      ),
+    ),
   );
 
-  return system_settings_form($form);
+  $form = system_settings_form($form);
+  // This will call the install helper in order to refresh the fields.
+  $form['#submit'][] = 'commerce_avalara_general_settings_form_submit';
+
+  return $form;
 }
