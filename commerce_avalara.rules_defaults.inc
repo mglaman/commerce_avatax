@@ -24,6 +24,7 @@ function commerce_avalara_default_rules_configuration() {
   }
   $rule = rules_reaction_rule();
   $rule->label = 'Delete AvaTax line items from order';
+  $rule->tags = array('Commerce Avalara');
   $rule->active = TRUE;
   $rule->weight = -1;
   $rule->event('commerce_order_update');
@@ -48,6 +49,7 @@ function commerce_avalara_default_rules_configuration() {
   $rule = rules_reaction_rule();
   $rule->label = 'Calculate Sales Tax using AvaTax';
   $rule->active = TRUE;
+  $rule->tags = array('Commerce Avalara');
   $rule->event('commerce_order_presave');
   $rule->condition(rules_condition('data_is_empty', array(
     'data:select' => 'commerce-order-unchanged',
@@ -70,6 +72,19 @@ function commerce_avalara_default_rules_configuration() {
     'commerce_order:select' => 'commerce-order',
   )));
   $rules['commerce_avalara_calculate_sales_tax'] = $rule;
+
+  // Create a new product pricing rule.
+  $rule = rules_reaction_rule();
+  $rule->label = t('Calculate VAT for a line item');
+  $rule->tags = array('Commerce Avalara');
+  $rule->active = TRUE;
+  $rule->event('commerce_product_calculate_sell_price');
+
+  $rule->action('commerce_avalara_calculate_vat', array(
+    'commerce_line_item:select' => 'commerce-line-item',
+  ));
+
+  $rules['commerce_avalara_calculate_vat'] = $rule;
 
   return $rules;
 }

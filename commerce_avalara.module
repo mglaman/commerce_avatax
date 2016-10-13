@@ -71,6 +71,14 @@ function commerce_avalara_menu() {
     'page arguments' => array('commerce_avalara_general_settings_form'),
     'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
   );
+  $items['admin/commerce/config/avalara/global-vat'] = array(
+    'title' => 'Global VAT',
+    'type' => MENU_LOCAL_TASK,
+    'access arguments' => array('administer avalara'),
+    'page arguments' => array('commerce_avalara_global_vat_settings_form'),
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+    'weight' => 10,
+  );
 
   return $items;
 }
@@ -185,6 +193,13 @@ function commerce_avalara_commerce_price_component_type_info() {
   $components['avalara_sales_tax'] = array(
     'title' => t('AvaTax sales tax'),
     'display_title' => variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'price_component_title', t('Sales tax')),
+    'weight' => 25,
+  );
+
+  // Define a price component for VAT.
+  $components['avalara_vat'] = array(
+    'title' => t('AvaTax VAT'),
+    'display_title' => t('VAT'),
     'weight' => 25,
   );
 
@@ -873,4 +888,40 @@ function commerce_avalara_exemption_codes_allowed_values() {
     'G' => 'Resale',
     'L' => 'Other',
   );
+}
+
+/**
+ * Calculates VAT for a line item.
+ *
+ * @param $line_item
+ *   The line item to which the VAT amount should be applied.
+ */
+function commerce_avalara_calculate_vat($line_item) {
+  // Check if the VAT calculation is enabled.
+  if (!variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'vat_calculation_enabled', FALSE)) {
+    return;
+  }
+  $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
+
+  // Don't apply vat if the unit price has a NULL amount.
+  if (is_null($line_item_wrapper->commerce_unit_price->value())) {
+    return;
+  }
+  module_load_include('inc', 'commerce_avalara', 'includes/commerce_avalara.calc');
+  if ($vat_price = commerce_avalara_calculate_vat_line_item($line_item)) {
+    if (is_array($vat_price)) {
+      $sku = $line_item_wrapper->commerce_product->sku->value();
+
+      if (isset($vat_price[$sku]['amount'])) {
+        $line_item_wrapper->commerce_unit_price->amount = $line_item_wrapper->commerce_unit_price->amount->value() + $vat_price[$sku]['amount'];
+        $line_item_wrapper->commerce_unit_price->data = commerce_price_component_add(
+          $line_item_wrapper->commerce_unit_price->value(),
+          'avalara_vat',
+          $vat_price[$sku],
+          TRUE
+        );
+      }
+    }
+
+  }
 }

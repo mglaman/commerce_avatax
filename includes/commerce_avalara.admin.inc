@@ -462,3 +462,35 @@ function commerce_avalara_shipping_settings_form($form, &$form_state) {
 
   return system_settings_form($form);
 }
+
+/**
+ * Builds the Avalara Shipping settings form.
+ */
+function commerce_avalara_global_vat_settings_form($form, &$form_state) {
+  include_once DRUPAL_ROOT . '/includes/locale.inc';
+  $form['global-vat'] = array(
+    '#title' => t('Global VAT settings'),
+    '#type' => 'fieldset',
+  );
+  $form['global-vat'][COMMERCE_AVALARA_VAR_PREFIX . 'vat_calculation_enabled'] = array(
+    '#title' => t('Enable VAT calculation?'),
+    '#type' => 'checkbox',
+    '#default_value' => variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'vat_calculation_enabled', FALSE),
+  );
+  $countries = country_get_list();
+  $countries_to_exclude = drupal_map_assoc(array(
+    'CA',
+    'US',
+  ));
+
+  $form['global-vat'][COMMERCE_AVALARA_VAR_PREFIX . 'vat_ship_to_country'] = array(
+    '#title' => t('Default Ship to Country'),
+    '#description' => t('The default country to use for VAT Calculation (When the customer profile country is unknown).'),
+    '#type' => 'select',
+    '#required' => TRUE,
+    '#options' => array_diff_key($countries, $countries_to_exclude),
+    '#default_value' => variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'vat_ship_to_country', ''),
+  );
+
+  return system_settings_form($form);
+}
