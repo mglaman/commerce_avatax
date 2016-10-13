@@ -255,17 +255,12 @@ function commerce_avalara_calculate_vat_line_item($line_item) {
   }
 
   // Prevent calculating the VAT multiple times in the same request.
-  if ($line_item->order_id > 0) {
-    $cid = 'order_' . $line_item->order_id;
-  }
-  else {
-    if (!empty($line_item->commerce_product)) {
-      $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
-      $cid = 'sku_' . $line_item_wrapper->commerce_product->sku->value();
-    }
+  if (!empty($line_item->commerce_product)) {
+    $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
+    $cid = 'sku_' . $line_item_wrapper->commerce_product->sku->value();
   }
 
-  // If we couln't generate a $cid, stop here.
+  // If we couldn't generate a $cid, stop here.
   if (!isset($cid)) {
     return FALSE;
   }
@@ -274,7 +269,6 @@ function commerce_avalara_calculate_vat_line_item($line_item) {
   if (isset($results[$cid])) {
     return $results[$cid];
   }
-
   $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
   $order = $line_item_wrapper->order->value();
 
@@ -290,31 +284,12 @@ function commerce_avalara_calculate_vat_line_item($line_item) {
     ),
   );
 
-  // If the order exists.
-  if ($order->order_id > 0) {
-    $order_wrapper = $line_item_wrapper->order;
-    $request_body['code'] = 'DC-' . $order->order_id;
-    $request_body['addresses']['shipTo'] = _commerce_avalara_transaction_get_ship_to($order);
-
-    // Get the currency code from the order total.
-    if (!empty($order->commerce_order_total) && isset($order_wrapper->commerce_order_total->currency_code)) {
-      $request_body['currencyCode'] = $order_wrapper->commerce_order_total->currency_code->value();
-    }
-
-    if (!empty($order->commerce_line_items)) {
-      _commerce_avalara_transaction_add_lines($request_body, $order_wrapper->commerce_line_items, 'vat');
-    }
-  }
-  else {
-    // Not sure which code we should generate here.
-    if (!empty($line_item->commerce_product)) {
-      $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
-      $code = 'SKU-' . $line_item_wrapper->commerce_product->sku->value();
-    }
-    // Get the currency code from the line item.
-    $request_body['currencyCode'] = $line_item_wrapper->commerce_unit_price->currency_code->value();
-    $request_body['code'] = $code;
-  }
+  // Not sure which code we should generate here.
+  $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
+  $code = 'SKU-' . $line_item_wrapper->commerce_product->sku->value();
+  // Get the currency code from the line item.
+  $request_body['currencyCode'] = $line_item_wrapper->commerce_unit_price->currency_code->value();
+  $request_body['code'] = $code;
 
   // If the transaction lines couldn't be added to the request body.
   if (empty($request_body['lines'])) {
@@ -345,7 +320,6 @@ function commerce_avalara_calculate_vat_line_item($line_item) {
 
     // Get the total tax for this line item from the lines array.
     if (!empty($request['result'][0])) {
-      $sku = $line_item_wrapper->commerce_product->sku->value();
       $currency_code = $request['result'][0]['currencyCode'];
       foreach ($request['result'][0]['lines'] as $line) {
         // Skip the line if the tax is empty.
