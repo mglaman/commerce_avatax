@@ -25,7 +25,20 @@ function commerce_avalara_permission() {
       'title' => t('Administer Avalara'),
       'description' => t('Manage settings for the Avalara Sales Tax'),
     ),
+    'configure tax exemptions' => array(
+      'title' => t('Configure Tax exemptions'),
+      'description' => t('Allow users to configure tax exemptions'),
+    ),
   );
+}
+
+/**
+ * Implements hook_field_access().
+ */
+function commerce_avalara_field_access($op, $field, $entity_type, $entity, $account) {
+  if ($field['field_name'] == 'avalara_tax_exemption_code' && $op == 'edit') {
+    return user_access('configure tax exemptions', $account);
+  }
 }
 
 /**
