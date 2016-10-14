@@ -63,8 +63,8 @@ function commerce_avalara_credentials_settings_form($form, &$form_state) {
   $display_warning = FALSE;
   foreach ($fields as $key => $conf) {
     $function = 'commerce_avalara_' . $key;
-    $variable_value = $function($api_mode);
     $variable_name = $var_prefix . $api_mode . '_' . $key;
+    $variable_value = variable_get($variable_name, '');
     // Determine if the settings are in the database; if they are not but have
     // values set, we disable the form fields so the values will not be saved to
     // the database on submission.
