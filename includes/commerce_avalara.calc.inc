@@ -65,6 +65,7 @@ function commerce_avalara_create_transaction($order, $transaction_type = 'SalesO
     }
   }
   _commerce_avalara_transaction_add_lines($request_body, $order_wrapper->commerce_line_items);
+  drupal_alter('commerce_avalara_create_transaction', $request_body, $order);
 
   // Create the transaction.
   $request = $avalara_object->transactionsCreate(array($request_body));
