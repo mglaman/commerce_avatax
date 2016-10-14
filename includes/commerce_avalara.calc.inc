@@ -45,8 +45,8 @@ function commerce_avalara_create_transaction($order) {
   if ($order->uid > 0) {
     // Check the Exemptions status.
     if (variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'exemptions_status', FALSE)) {
-      if (isset($order_wrapper->owner->avatax_exemption_code)) {
-        $exemption_code = $order_wrapper->owner->avatax_exemption_code->value();
+      if (isset($order_wrapper->owner->avalara_tax_exemption_code)) {
+        $exemption_code = $order_wrapper->owner->avalara_tax_exemption_code->value();
 
         // If we have an exemption code.
         if (!empty($exemption_code)) {
@@ -79,7 +79,7 @@ function commerce_avalara_create_transaction($order) {
  *   The line items that need to be added to the transaction.
  * @param
  */
-function _commerce_avalara_transaction_add_lines(&$request_body, $line_items, $tax_type = 'sales_tax') {
+function _commerce_avalara_transaction_add_lines(&$request_body, $line_items) {
   $lines = array();
   $product_version = commerce_avalara_product_version();
 
@@ -98,18 +98,10 @@ function _commerce_avalara_transaction_add_lines(&$request_body, $line_items, $t
 
       // For the pro version, get the tax code from the Tax code term referenced
       // by the product.
-      if ($product_version == COMMERCE_AVALARA_PRO_VERSION && isset($line_item_wrapper->commerce_product->avatax_code)) {
-        if ($line_item_wrapper->commerce_product->avatax_code->value()) {
-          $tax_code = $line_item_wrapper->commerce_product->avatax_code->name->value();
+      if ($product_version == COMMERCE_AVALARA_PRO_VERSION && isset($line_item_wrapper->commerce_product->avalara_tax_code)) {
+        if ($line_item_wrapper->commerce_product->avalara_tax_code->value()) {
+          $tax_code = $line_item_wrapper->commerce_product->avalara_tax_code->name->value();
         }
-      }
-
-      // Get the total from the unit price if the tax type is VAT.
-      if ($tax_type == 'vat') {
-        $amount = $line_item_wrapper->commerce_unit_price->amount_decimal->value() * $line_item->quantity;
-      }
-      else {
-        $amount = $line_item_wrapper->commerce_total->amount_decimal->value();
       }
 
       $lines[] = array(
@@ -119,7 +111,7 @@ function _commerce_avalara_transaction_add_lines(&$request_body, $line_items, $t
         'description' => $line_item_wrapper->commerce_product->title->value(),
         'taxCode' => $tax_code,
         'quantity' => $line_item->quantity,
-        'amount' => $amount,
+        'amount' => $line_item_wrapper->commerce_total->amount_decimal->value(),
         // The discounted boolean needs to be set to TRUE, otherwise, discount
         // document level won't be applied.
         'discounted' => 'true',
@@ -150,6 +142,7 @@ function _commerce_avalara_transaction_add_lines(&$request_body, $line_items, $t
         'discounted' => 'false',
       );
     }
+    // Add a document level discount if there's a discount applied to the order.
     elseif ($line_item->type === 'commerce_discount') {
       $request_body['discount'] = $line_item_wrapper->commerce_total->amount_decimal->value() * -1;
     }
@@ -232,120 +225,4 @@ function _commerce_avalara_transaction_get_ship_to($order) {
   }
 
   return $ship_to;
-}
-
-/**
- * Calculate the VAT for a given line item.
- *
- * @param object $line_item
- *   The line item object.
- *
- * @return array|bool
- *   An associative array of containing the vat 'amount' and 'currency_code' or
- *   FALSE if the amount could not be calculated.
- */
-function commerce_avalara_calculate_vat_line_item($line_item) {
-  $results = &drupal_static(__FUNCTION__, array());
-  $company_code = commerce_avalara_company_code();
-
-  // TODO: Fail silently or improve the error message?
-  if (empty($company_code) || !$avalara_object = commerce_avalara_object()) {
-    drupal_set_message(t("The Avalara module is not properly configured, please configure the company code."), 'error');
-    return FALSE;
-  }
-
-  // Prevent calculating the VAT multiple times in the same request.
-  if (!empty($line_item->commerce_product)) {
-    $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
-    $cid = 'sku_' . $line_item_wrapper->commerce_product->sku->value();
-  }
-
-  // If we couldn't generate a $cid, stop here.
-  if (!isset($cid)) {
-    return FALSE;
-  }
-
-  // Check if the result is statically cached.
-  if (isset($results[$cid])) {
-    return $results[$cid];
-  }
-  $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
-  $order = $line_item_wrapper->order->value();
-
-  // Prepare the transaction request body.
-  $request_body = array(
-    // TODO: Investigate why the SalesOrder request fails.
-    'type' => 'SalesInvoice',
-    'companyCode' => $company_code,
-    'date' => format_date(REQUEST_TIME, 'custom', 'c'),
-    'customerCode' => _commerce_avalara_transaction_get_customer_code($order),
-    'addresses' => array(
-      'shipFrom' => _commerce_avalara_transaction_get_ship_from(),
-    ),
-  );
-
-  // Check if the user has a VAT ID field.
-  if (!empty($order->uid)) {
-    $order_wrapper = $line_item_wrapper->order;
-    if (isset($order_wrapper->owner->avalara_vat_id)) {
-      $vat_id = $order_wrapper->owner->avalara_vat_id->value();
-
-      if (!empty($vat_id)) {
-        $request_body['businessIdentificationNo'] = $vat_id;
-      }
-    }
-  }
-
-  // Not sure which code we should generate here.
-  $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
-  $code = 'SKU-' . $line_item_wrapper->commerce_product->sku->value();
-  // Get the currency code from the line item.
-  $request_body['currencyCode'] = $line_item_wrapper->commerce_unit_price->currency_code->value();
-  $request_body['code'] = $code;
-
-  // If the transaction lines couldn't be added to the request body.
-  if (empty($request_body['lines'])) {
-    _commerce_avalara_transaction_add_lines($request_body, array($line_item_wrapper), 'vat');
-  }
-
-  // Use the default Ship to country configured.
-  if (empty($request_body['addresses']['shipTo'])) {
-    $ship_to_country = variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'vat_ship_to_country', '');
-
-    if (!empty($ship_to_country)) {
-      $request_body['addresses']['shipTo'] = array(
-        'country' => $ship_to_country,
-      );
-    }
-  }
-
-  // Create the transaction.
-  $request = $avalara_object->transactionsCreate($company_code, array($request_body));
-
-  // TODO: Map the error code to a meaningful message.
-  if (empty($request['success'])) {
-    drupal_set_message(t('Could not calculate the VAT'), 'error');
-    $results[$cid] = FALSE;
-  }
-  else {
-    $results[$cid] = FALSE;
-
-    // Get the total tax for this line item from the lines array.
-    if (!empty($request['result'][0])) {
-      $currency_code = $request['result'][0]['currencyCode'];
-      foreach ($request['result'][0]['lines'] as $line) {
-        // Skip the line if the tax is empty.
-        if (empty($line['tax']) || !isset($line['itemCode'])) {
-          continue;
-        }
-
-        $results[$cid][$line['itemCode']] = array(
-          'currency_code' => $currency_code,
-          'amount' => commerce_currency_decimal_to_amount($line['tax'], $currency_code),
-        );
-      }
-    }
-  }
-
-  return $results[$cid];
 }

@@ -68,23 +68,10 @@ function commerce_avalara_default_rules_configuration() {
       'checkout_review' => 'checkout_review',
     ),
   )));
-  $rule->action(rules_action('commerce_avalara_calculate_sales_tax', array(
+  $rule->action(rules_action('commerce_avalara_calculate_tax', array(
     'commerce_order:select' => 'commerce-order',
   )));
-  $rules['commerce_avalara_calculate_sales_tax'] = $rule;
-
-  // Create a new product pricing rule.
-  $rule = rules_reaction_rule();
-  $rule->label = t('Calculate VAT for a line item');
-  $rule->tags = array('Commerce Avalara');
-  $rule->active = TRUE;
-  $rule->event('commerce_product_calculate_sell_price');
-
-  $rule->action('commerce_avalara_calculate_vat', array(
-    'commerce_line_item:select' => 'commerce-line-item',
-  ));
-
-  $rules['commerce_avalara_calculate_vat'] = $rule;
+  $rules['commerce_avalara_calculate_tax'] = $rule;
 
   return $rules;
 }

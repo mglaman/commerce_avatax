@@ -9,8 +9,8 @@ define('COMMERCE_AVALARA_PRODUCTION_MODE', 'prod');
 define('COMMERCE_AVALARA_DEVELOPMENT_MODE', 'dev');
 define('COMMERCE_AVALARA_BASIC_VERSION', 'basic');
 define('COMMERCE_AVALARA_PRO_VERSION', 'pro');
-// Defines constants for the credentials field names.
 define('COMMERCE_AVALARA_VAR_PREFIX', 'commerce_avalara_');
+// Defines constants for the credentials field names.
 define('COMMERCE_AVALARA_ACCOUNT_NUMBER_FIELD', 'account_number');
 define('COMMERCE_AVALARA_LICENSE_KEY_FIELD', 'license_key');
 define('COMMERCE_AVALARA_COMPANY_CODE_FIELD', 'company_code');
@@ -70,14 +70,6 @@ function commerce_avalara_menu() {
     'access arguments' => array('administer avalara'),
     'page arguments' => array('commerce_avalara_general_settings_form'),
     'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
-  );
-  $items['admin/commerce/config/avalara/global-vat'] = array(
-    'title' => 'Global VAT',
-    'type' => MENU_LOCAL_TASK,
-    'access arguments' => array('administer avalara'),
-    'page arguments' => array('commerce_avalara_global_vat_settings_form'),
-    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
-    'weight' => 10,
   );
 
   return $items;
@@ -173,7 +165,7 @@ function commerce_avalara_object($api_key = '', $api_mode = '') {
 function commerce_avalara_commerce_line_item_type_info() {
   $line_item_types = array();
 
-  $line_item_types['avalara_sales_tax'] = array(
+  $line_item_types['avalara_tax'] = array(
     'name' => t('Sales tax'),
     'description' => t('Calculate AvaTax'),
     'add_form_submit_value' => t('Add Sales tax'),
@@ -222,7 +214,7 @@ function commerce_avalara_line_item_title($line_item) {
 function commerce_avalara_field_widget_form_alter(&$element, &$form_state, $context) {
   if ($context['instance']['widget']['type'] == 'commerce_line_item_manager') {
     foreach ($element['line_items'] as $line_item_id => $line_item) {
-      if ($line_item['line_item']['#value']->type == 'avalara_sales_tax') {
+      if ($line_item['line_item']['#value']->type == 'avalara_tax') {
         $element['line_items'][$line_item_id]['commerce_unit_price']['#access'] = FALSE;
         $element['line_items'][$line_item_id]['quantity']['#access'] = FALSE;
       }
@@ -247,7 +239,7 @@ function commerce_avalara_field_widget_form_alter(&$element, &$form_state, $cont
 function commerce_avalara_line_item_new($tax_price, $order_id = 0, $data = array()) {
   // Create the new line item.
   $line_item = entity_create('commerce_line_item', array(
-    'type' => 'avalara_sales_tax',
+    'type' => 'avalara_tax',
     'order_id' => $order_id,
     'quantity' => 1,
     'line_item_label' => t('Sales Tax'),
@@ -277,7 +269,7 @@ function commerce_avalara_line_item_new($tax_price, $order_id = 0, $data = array
 /**
  * Calculate sales tax for a given order.
  */
-function commerce_avalara_calculate_sales_tax($order) {
+function commerce_avalara_calculate_tax($order) {
   $company_code = commerce_avalara_company_code();
   // Skip tax calculation if the option is disabled, or if the company code
   // is empty.
@@ -312,19 +304,19 @@ function commerce_avalara_calculate_sales_tax($order) {
     // Create a new Sales tax line item with the calculated rate.
     $line_item = commerce_avalara_line_item_new($tax_price, $order->order_id, $data);
     $order->data['commerce_avalara'] = $data['commerce_avalara'];
-    commerce_avalara_add_sales_tax_line_item($line_item, $order);
+    commerce_avalara_add_tax_line_item($line_item, $order);
   }
 }
 
 /**
- * Adds an AvaTax line item to an order, and saves the order.
+ * Adds an Avatax line item to an order, and saves the order.
  *
  * @param object $line_item
  *   An unsaved avatax line item that should be added to the order.
  * @param object $order
  *   The order to add the avatax line item to.
  */
-function commerce_avalara_add_sales_tax_line_item($line_item, $order) {
+function commerce_avalara_add_tax_line_item($line_item, $order) {
   // Delete any existing AvaTax line items from the order.
   commerce_avalara_delete_sales_tax_line_items($order, TRUE);
 
@@ -382,7 +374,7 @@ function commerce_avalara_delete_sales_tax_line_items($order, $skip_save = FALSE
 
   foreach ($order_wrapper->commerce_line_items as $delta => $line_item_wrapper) {
     // If this line item is a Sales tax line item...
-    if ($line_item_wrapper->type->value() == 'avalara_sales_tax') {
+    if ($line_item_wrapper->type->value() == 'avalara_tax') {
       // Store its ID for later deletion and remove the reference from the line
       // item reference field.
       $line_item_ids[] = $line_item_wrapper->line_item_id->value();
@@ -899,40 +891,4 @@ function commerce_avalara_exemption_codes_allowed_values() {
     'G' => 'Resale',
     'L' => 'Other',
   );
-}
-
-/**
- * Calculates VAT for a line item.
- *
- * @param $line_item
- *   The line item to which the VAT amount should be applied.
- */
-function commerce_avalara_calculate_vat($line_item) {
-  // Check if the VAT calculation is enabled.
-  if (!variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'vat_calculation_enabled', FALSE)) {
-    return;
-  }
-  $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
-
-  // Don't apply vat if the unit price has a NULL amount.
-  if (is_null($line_item_wrapper->commerce_unit_price->value())) {
-    return;
-  }
-  module_load_include('inc', 'commerce_avalara', 'includes/commerce_avalara.calc');
-  if ($vat_price = commerce_avalara_calculate_vat_line_item($line_item)) {
-    if (is_array($vat_price)) {
-      $sku = $line_item_wrapper->commerce_product->sku->value();
-
-      if (isset($vat_price[$sku]['amount'])) {
-        $line_item_wrapper->commerce_unit_price->amount = $line_item_wrapper->commerce_unit_price->amount->value() + $vat_price[$sku]['amount'];
-        $line_item_wrapper->commerce_unit_price->data = commerce_price_component_add(
-          $line_item_wrapper->commerce_unit_price->value(),
-          'avalara_vat',
-          $vat_price[$sku],
-          TRUE
-        );
-      }
-    }
-
-  }
 }

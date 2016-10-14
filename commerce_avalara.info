@@ -6,6 +6,8 @@ core = 7.x
 configure = admin/commerce/config/avalara
 
 dependencies[] = commerce
+dependencies[] = commerce_checkout
+dependencies[] = commerce_customer
 dependencies[] = rules
 
 ; Identify the Avalara library files.
