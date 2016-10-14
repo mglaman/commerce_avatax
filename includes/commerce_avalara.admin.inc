@@ -462,3 +462,72 @@ function commerce_avalara_shipping_settings_form($form, &$form_state) {
 
   return system_settings_form($form);
 }
+
+/**
+ * Form callback: confirmation form for manually calculating Taxes of an order.
+ *
+ * @param $order
+ *   The order object to apply the Taxes to.
+ *
+ * @return
+ *   The form array to confirm the calculation.
+ *
+ * @see confirm_form()
+ */
+function commerce_avalara_order_admin_calculate_tax_form($form, &$form_state, $order) {
+  $form['order_id'] = array(
+    '#type' => 'value',
+    '#value' => $order->order_id,
+  );
+
+  // Build a description of what the user may expect to occur on submission.
+  $items = array(
+    t('The Avalara Tax Service needs a valid postal address.'),
+    t('Please note that a SalesOrder transaction is going to be created, the committed SalesInvoice transaction will be created once the order is paid in full.'),
+  );
+
+  $form = confirm_form($form,
+    t('Are you sure you want to apply Taxes to order @number?', array('@number' => $order->order_number)),
+    'admin/commerce/orders/' . $order->order_id . '/edit',
+    '<p>' . theme('item_list', array('items' => $items)) . '</p>',
+    t('Calculate Taxes'),
+    t('Cancel')
+  );
+
+  return $form;
+}
+
+/**
+ * Form submit callback for commerce_avalara_order_admin_calculate_tax_form().
+ */
+function commerce_avalara_order_admin_calculate_tax_form_submit($form, &$form_state) {
+  if ($order = commerce_order_load($form_state['values']['order_id'])) {
+    $request = commerce_avalara_calculate_tax($order);
+    $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+    $tax_line_item_found = FALSE;
+
+    foreach ($order_wrapper->commerce_line_items as $line_item_wrapper) {
+      if ($line_item_wrapper->type->value() == 'avalara_tax') {
+        $tax_line_item_found = TRUE;
+      }
+    }
+
+    // Save the order if the tax calculation was performed.
+    if (!empty($request['success']) && $tax_line_item_found) {
+      commerce_order_save($order);
+      drupal_set_message(t('Taxes have been applied and the order updated.'));
+    }
+    else {
+      $error = t('Unknown error');
+      if (!empty($request['error']) && isset($request['error']['message'])) {
+        $error = $request['error']['message'];
+      }
+      drupal_set_message(t('The taxes could not be calculated for that order (@error)', array('@error' => $error), 'error'));
+    }
+    $form_state['redirect'] = 'admin/commerce/orders/' . $order->order_id . '/edit';
+  }
+  else {
+    drupal_set_message(t('Order not found.'), 'error');
+    $form_state['redirect'] = 'admin/commerce/orders';
+  }
+}

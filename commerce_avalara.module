@@ -71,8 +71,36 @@ function commerce_avalara_menu() {
     'page arguments' => array('commerce_avalara_general_settings_form'),
     'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
   );
+  $items['admin/commerce/orders/%commerce_order/edit/calculate-tax'] = array(
+    'title' => 'Calculate Taxes',
+    'description' => 'Call the Avalara Tax service in order to calculate & apply the Tax amount.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('commerce_avalara_order_admin_calculate_tax_form', 3),
+    'access callback' => 'commerce_avalara_order_admin_form_access',
+    'access arguments' => array(3),
+    'type' => MENU_LOCAL_ACTION,
+    'file' => 'includes/commerce_avalara.admin.inc',
+  );
 
   return $items;
+}
+
+/**
+ * Access callback: determines access to the "Calculate Tax" local action.
+ */
+function commerce_avalara_order_admin_form_access($order) {
+  $company_code = commerce_avalara_company_code();
+  // Skip tax calculation if the option is disabled, or if the company code
+  // is empty & skip cart orders.
+  if (!variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'tax_calculation_enabled', TRUE) || empty($company_code) || commerce_cart_order_is_cart($order)) {
+    return FALSE;
+  }
+
+  if (empty($order->commerce_line_items)) {
+    return FALSE;
+  }
+
+  return commerce_order_access('update', $order);
 }
 
 /**
@@ -292,17 +320,24 @@ function commerce_avalara_calculate_tax($order) {
   $request = commerce_avalara_create_transaction($order, 'SalesOrder');
 
   // Parse the result request.
-  if ($request['success'] && isset($request['result'][0])) {
+  if (!empty($request['success']) && isset($request['result'][0])) {
     $result = $request['result'][0];
+    $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+    $currency_code = $order_wrapper->commerce_order_total->currency_code->value();
     $tax_price = array(
-      'amount' => commerce_currency_decimal_to_amount($result['totalTax'], $result['currencyCode']),
-      'currency_code' => $result['currencyCode'],
+      'amount' => commerce_currency_decimal_to_amount($result['totalTax'], $currency_code),
+      'currency_code' => $currency_code,
       'data' => array(),
     );
     // Create a new Sales tax line item with the calculated rate.
     $line_item = commerce_avalara_line_item_new($tax_price, $order->order_id);
     commerce_avalara_add_tax_line_item($line_item, $order);
   }
+  else {
+    drupal_set_message(t('Could not calculate the Tax'), 'error');
+  }
+
+  return $request;
 }
 
 /**

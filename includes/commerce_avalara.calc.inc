@@ -67,13 +67,7 @@ function commerce_avalara_create_transaction($order, $transaction_type = 'SalesO
   _commerce_avalara_transaction_add_lines($request_body, $order_wrapper->commerce_line_items);
 
   // Create the transaction.
-  $request = $avalara_object->transactionsCreate($company_code, array($request_body));
-
-  // TODO: Map the error code to a meaningful message.
-  if (empty($request['success'])) {
-    drupal_set_message(t('Could not calculate the Tax'), 'error');
-    return FALSE;
-  }
+  $request = $avalara_object->transactionsCreate(array($request_body));
 
   return $request;
 }

@@ -124,15 +124,12 @@ class Avatax {
   /**
    * Create a new transaction.
    *
-   * @param string $companyCode
-   *   The company code of the company that recorded these transactions.
-   *
    * @param string[] $parameters
    *   An associative array of POST body parameters to be sent that should at
-   *   least contain the code, the date, and the customerCode.
+   *   least contain the companycode, the code, the date, and the customerCode.
    */
-  public function transactionsCreate($companyCode, $parameters) {
-    return $this->doRequest('POST', "companies/$companyCode/transactions/create", $parameters);
+  public function transactionsCreate($parameters) {
+    return $this->doRequest('POST', "transactions/create", $parameters);
   }
 
   /**
@@ -252,6 +249,7 @@ class Avatax {
    *   of returned data.
    */
   protected function doRequest($method, $path, array $fields = array()) {
+    $return = array();
     $url = $this->baseUrl() . $path;
     // Set the request URL and method.
     curl_setopt($this->ch, CURLOPT_URL, $url);
@@ -276,16 +274,28 @@ class Avatax {
 
     if (!$success) {
       $result = 'Error ' . $response_code;
+
+      // Return the error message if it exists.
+      if (!empty($result)) {
+        $decoded_result = json_decode($result, TRUE);
+
+        // Return the error message if it's there.
+        if (isset($decoded_result['error'])) {
+          $return['error'] = $decoded_result['error'];
+        }
+      }
     }
     elseif ($success && !empty($result)) {
       $result = json_decode($result, TRUE);
     }
 
-    return array(
+    $return += array(
       'success' => $success,
       'result' => $result,
       'response_code' => $response_code,
     );
+
+    return $return;
   }
 
 }
