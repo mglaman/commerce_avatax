@@ -10,12 +10,16 @@
  *
  * @param object $order
  *   The order object.
+ * @param string $transaction_type
+ *   The transaction type (e.g SalesOrder|SalesInvoice).
+ * @param bool $commit
+ *   Boolean indicating whether or not to commit the transaction.
  *
  * @return array|bool
  *   An array containing the AvaTax request result
  *   or FALSE if the tax calculation failed.
  */
-function commerce_avalara_create_transaction($order) {
+function commerce_avalara_create_transaction($order, $transaction_type = 'SalesOrder', $commit = FALSE) {
   $company_code = commerce_avalara_company_code();
 
   // TODO: Fail silently or improve the error message?
@@ -28,7 +32,7 @@ function commerce_avalara_create_transaction($order) {
   // Prepare the Request Body.
   $request_body = array(
     // TODO: Investigate why the SalesOrder request fails.
-    'type' => 'SalesInvoice',
+    'type' => $transaction_type,
     'companyCode' => $company_code,
     'date' => format_date(REQUEST_TIME, 'custom', 'c'),
     // TODO: Probably generate a unique code.
@@ -40,6 +44,10 @@ function commerce_avalara_create_transaction($order) {
       'shipTo' => _commerce_avalara_transaction_get_ship_to($order),
     ),
   );
+
+  if (!empty($commit)) {
+    $request_body['commit'] = TRUE;
+  }
 
   // For non anonymous orders, send the exemption code if it exists.
   if ($order->uid > 0) {

@@ -289,7 +289,7 @@ function commerce_avalara_calculate_tax($order) {
     return;
   }
   module_load_include('inc', 'commerce_avalara', 'includes/commerce_avalara.calc');
-  $request = commerce_avalara_create_transaction($order);
+  $request = commerce_avalara_create_transaction($order, 'SalesOrder');
 
   // Parse the result request.
   if ($request['success'] && isset($request['result'][0])) {
@@ -299,11 +299,8 @@ function commerce_avalara_calculate_tax($order) {
       'currency_code' => $result['currencyCode'],
       'data' => array(),
     );
-    $data['commerce_avalara']['transaction_id'] = $result['id'];
-    $data['commerce_avalara']['transaction_code'] = $result['code'];
     // Create a new Sales tax line item with the calculated rate.
-    $line_item = commerce_avalara_line_item_new($tax_price, $order->order_id, $data);
-    $order->data['commerce_avalara'] = $data['commerce_avalara'];
+    $line_item = commerce_avalara_line_item_new($tax_price, $order->order_id);
     commerce_avalara_add_tax_line_item($line_item, $order);
   }
 }
@@ -413,14 +410,44 @@ function commerce_avalara_email_to_username($user_email) {
 /**
  * Implements hook_commerce_payment_order_paid_in_full().
  *
- * Commit transaction when an order is paid in full.
+ * Create a committed SalesInvoice transaction when an order is paid in full.
  */
 function commerce_avalara_commerce_payment_order_paid_in_full($order) {
-  commerce_avalara_commit_transaction($order);
+  $company_code = commerce_avalara_company_code();
+  // Skip the transaction creation
+  if (!variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'tax_calculation_enabled', TRUE) || empty($company_code)) {
+    return;
+  }
+  // Check if we have an Avalara tax line item present on this order.
+  $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+  $tax_line_item_found = FALSE;
+
+  foreach ($order_wrapper->commerce_line_items as $delta => $line_item_wrapper) {
+    // If this line item is a Sales tax line item...
+    if ($line_item_wrapper->type->value() == 'avalara_tax') {
+      $tax_line_item_found = TRUE;
+      break;
+    }
+  }
+
+  // Commit the transaction.
+  if ($tax_line_item_found) {
+    module_load_include('inc', 'commerce_avalara', 'includes/commerce_avalara.calc');
+    $request = commerce_avalara_create_transaction($order, 'SalesInvoice', TRUE);
+
+    // Parse the result request.
+    if ($request['success'] && isset($request['result'][0])) {
+      $result = $request['result'][0];
+      $order->data['commerce_avalara'] = array(
+        'transaction_id' => $result['id'],
+        'transaction_code' => $result['code'],
+      );
+    }
+  }
 }
 
 /**
- * COMMIT AvaTax transaction for a given $order.
+ * COMMIT an existing transaction for a given $order.
  */
 function commerce_avalara_commit_transaction($order) {
   if (isset($order->data['commerce_avalara']['transaction_code']) && $avalara = commerce_avalara_object()) {

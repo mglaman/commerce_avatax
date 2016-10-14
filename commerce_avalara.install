@@ -97,7 +97,7 @@ function _commerce_avalara_configure_tax_code_field() {
     return;
   }
 
-  // By default add the avatax_code field to all product bundles.
+  // By default add the avalara_tax_code field to all product bundles.
   if (empty($product_types)) {
     $product_types = array_keys(commerce_product_types());
   }
@@ -147,7 +147,7 @@ function _commerce_avalara_configure_tax_code_field() {
         ),
         'entity_type' => 'commerce_product',
         'field_name' => $field_name,
-        'label' => 'AvaTax code',
+        'label' => 'Avalara Tax code',
         'required' => TRUE,
         'widget' => array(
           'module' => 'taxonomy',
