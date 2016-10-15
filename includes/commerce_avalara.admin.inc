@@ -237,27 +237,13 @@ function commerce_avalara_general_settings_form($form, &$form_state) {
     '#title' => t('General settings'),
     '#type' => 'fieldset',
   );
-  $form['general'][COMMERCE_AVALARA_VAR_PREFIX . 'product_version'] = array(
-    '#title' => t('Select AvaTax Version'),
-    '#type' => 'select',
-    '#options' => array(
-      COMMERCE_AVALARA_BASIC_VERSION => t('AvaTax Basic'),
-      COMMERCE_AVALARA_PRO_VERSION => t('AvaTax Pro'),
-    ),
-    '#default_value' => commerce_avalara_product_version(),
-  );
   $form['general'][COMMERCE_AVALARA_VAR_PREFIX . 'product_types'] = array(
     '#title' => t('Product types'),
     '#type' => 'select',
     '#multiple' => TRUE,
     '#options' => commerce_product_type_get_name(),
     '#default_value' => variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'product_types', array()),
-    '#description' => t('Which product types should have their taxes calculated by AvaTax? Leave empty to enable for all product types.'),
-    '#states' => array(
-      'visible' => array(
-        ':input[name="' . COMMERCE_AVALARA_VAR_PREFIX  . 'product_version"]' => array('value' => COMMERCE_AVALARA_PRO_VERSION),
-      ),
-    ),
+    '#description' => t('Select the product types for which you want to be able to set tax codes that are sent to Avalara.'),
   );
   $form['general'][COMMERCE_AVALARA_VAR_PREFIX . 'exemptions_status'] = array(
     '#title' => t('Administer Sales Tax Exemptions'),

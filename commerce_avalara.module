@@ -7,8 +7,6 @@
 
 define('COMMERCE_AVALARA_PRODUCTION_MODE', 'prod');
 define('COMMERCE_AVALARA_DEVELOPMENT_MODE', 'dev');
-define('COMMERCE_AVALARA_BASIC_VERSION', 'basic');
-define('COMMERCE_AVALARA_PRO_VERSION', 'pro');
 define('COMMERCE_AVALARA_VAR_PREFIX', 'commerce_avalara_');
 // Defines constants for the credentials field names.
 define('COMMERCE_AVALARA_ACCOUNT_NUMBER_FIELD', 'account_number');
@@ -128,13 +126,6 @@ function commerce_avalara_address_validation_access($permission) {
  */
 function commerce_avalara_api_mode() {
   return variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'api_mode', COMMERCE_AVALARA_DEVELOPMENT_MODE);
-}
-
-/**
- * Returns the Avalara Product version (Basic|Pro).
- */
-function commerce_avalara_product_version() {
-  return variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'product_version', COMMERCE_AVALARA_BASIC_VERSION);
 }
 
 /**

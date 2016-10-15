@@ -93,10 +93,6 @@ function _commerce_avalara_configure_tax_code_field() {
   $field_name = 'avalara_tax_code';
   $product_types = variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'product_types', array());
 
-  if (commerce_avalara_product_version() != COMMERCE_AVALARA_PRO_VERSION) {
-    return;
-  }
-
   // By default add the avalara_tax_code field to all product bundles.
   if (empty($product_types)) {
     $product_types = array_keys(commerce_product_types());

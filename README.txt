@@ -8,16 +8,6 @@ AvaTax reduces the audit risk to a company with a cloud-based sales tax
 services that makes it simple to do rate calculation while managing exemption
 certificates, filing forms and remitting payments.
 
-The module supports two modes - Basic - Pro - which correspond to
-the levels of service available for AvaTax.
-
-The AvaTax Basic service offers limited use of the AvaTax sales tax codes, in
-particular P0000000 for Personal Taxable goods, Shipping tax codes and NT for
-Not Taxable goods.
-
-The AvaTax Pro service offers full use of the AvaTax sales tax codes. The Pro
-service is required for states like New York were sales tax rates can be based
-on the type of product, the delivery address, and the time of year.
 
 The Tax is calculated based on the delivery address, the sales tax codes
 assigned to line item in the order, and the sales tax rules applicable to the

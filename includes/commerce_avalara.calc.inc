@@ -84,7 +84,6 @@ function commerce_avalara_create_transaction($order, $transaction_type = 'SalesO
  */
 function _commerce_avalara_transaction_add_lines(&$request_body, $line_items) {
   $lines = array();
-  $product_version = commerce_avalara_product_version();
 
   foreach ($line_items as $delta => $line_item_wrapper) {
     // Ensure the line item still exists.
@@ -95,13 +94,10 @@ function _commerce_avalara_transaction_add_lines(&$request_body, $line_items) {
 
     // Handles products.
     if (in_array($line_item->type, commerce_product_line_item_types())) {
-      // TODO: Defaults to a generic tax code? Or just skip the product if no
-      // Tax code were set-up?
       $tax_code = '';
 
-      // For the pro version, get the tax code from the Tax code term referenced
-      // by the product.
-      if ($product_version == COMMERCE_AVALARA_PRO_VERSION && isset($line_item_wrapper->commerce_product->avalara_tax_code)) {
+      // Get the tax code from the "Tax code" term referenced by the product.
+      if (isset($line_item_wrapper->commerce_product->avalara_tax_code)) {
         if ($line_item_wrapper->commerce_product->avalara_tax_code->value()) {
           $tax_code = $line_item_wrapper->commerce_product->avalara_tax_code->name->value();
         }
