@@ -517,3 +517,19 @@ function commerce_avalara_order_admin_calculate_tax_form_submit($form, &$form_st
     $form_state['redirect'] = 'admin/commerce/orders';
   }
 }
+
+/**
+ * Builds the Avalara Global VAT settings form.
+ */
+function commerce_avalara_global_vat_settings_form($form, &$form_state) {
+  $form['global-vat'][COMMERCE_AVALARA_VAR_PREFIX . 'add_vat_field'] = array(
+    '#title' => t('Allow customers to supply a VAT ID for tax-exemptions'),
+    '#description' => t('Customers will be able to supply a VAT ID that will be submitted as their business identification number.'),
+    '#type' => 'checkbox',
+    '#default_value' => variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'add_vat_field', FALSE),
+  );
+  $form = system_settings_form($form);
+  // This will call the install helper in order to refresh the fields.
+  $form['#submit'][] = 'commerce_avalara_general_settings_form_submit';
+  return $form;
+}

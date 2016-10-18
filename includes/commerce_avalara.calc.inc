@@ -63,6 +63,16 @@ function commerce_avalara_create_transaction($order, $transaction_type = 'SalesO
         }
       }
     }
+
+    // Check if the user has a VAT ID field.
+    if (variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'add_vat_field', FALSE)) {
+      if (isset($order_wrapper->owner->avalara_vat_id)) {
+        $vat_id = $order_wrapper->owner->avalara_vat_id->value();
+        if (!empty($vat_id)) {
+          $request_body['businessIdentificationNo'] = $vat_id;
+        }
+      }
+    }
   }
 
   $tax_included = FALSE;

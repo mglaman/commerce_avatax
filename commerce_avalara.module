@@ -92,6 +92,14 @@ function commerce_avalara_menu() {
     'type' => MENU_LOCAL_ACTION,
     'file' => 'includes/commerce_avalara.admin.inc',
   );
+  $items['admin/commerce/config/avalara/global-vat'] = array(
+    'title' => 'Global VAT',
+    'type' => MENU_LOCAL_TASK,
+    'access arguments' => array('administer avalara'),
+    'page arguments' => array('commerce_avalara_global_vat_settings_form'),
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+    'weight' => 10,
+  );
 
   return $items;
 }

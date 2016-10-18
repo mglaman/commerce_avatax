@@ -85,6 +85,7 @@ function commerce_avalara_install_helper() {
   drupal_load('module', 'commerce_product');
   _commerce_avalara_configure_tax_code_field();
   _commerce_avalara_configure_tax_exemption_field();
+  _commerce_avalara_configure_vat_id_field();
 }
 
 /**
@@ -213,6 +214,54 @@ function _commerce_avalara_configure_tax_exemption_field() {
           'module' => 'options',
           'settings' => array(),
           'type' => 'options_select',
+          'weight' => 7,
+        ),
+      ));
+    }
+  }
+}
+
+/**
+ * Helper function : Configure the VAT ID field.
+ */
+function _commerce_avalara_configure_vat_id_field() {
+  $field_name = 'avalara_vat_id';
+  $add_vat_field = variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'add_vat_field', 0);
+
+  // Delete the field if it exist.
+  if (!$add_vat_field) {
+    $instance = field_info_instance('user', $field_name, 'user');
+    if ($instance) {
+      field_delete_instance($instance);
+    }
+  }
+  else {
+    // Create the field and instance if they do not exist.
+    $field = field_info_field($field_name);
+    if (!$field) {
+      field_create_field(array(
+        'cardinality' => 1,
+        'field_name' => $field_name,
+        'type' => 'text',
+      ));
+    }
+    $instance = field_info_instance('user', $field_name, 'user');
+    if (!$instance) {
+      field_create_instance(array(
+        'bundle' => 'user',
+        'display' => array(),
+        'entity_type' => 'user',
+        'field_name' => $field_name,
+        'label' => 'VAT ID',
+        'required' => 0,
+        'settings' => array(
+          'user_register_form' => 0,
+        ),
+        'widget' => array(
+          'active' => 1,
+          'module' => 'text',
+          'settings' => array(),
+          'type' => 'text_textfield',
           'weight' => 7,
         ),
       ));
