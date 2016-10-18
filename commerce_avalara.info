@@ -1,4 +1,4 @@
-name = AvaTax
+name = Commerce Avalara
 description = Drupal Commerce Connector for AvaTax
 package = Commerce (Tax)
 core = 7.x
