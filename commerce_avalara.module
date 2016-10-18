@@ -198,9 +198,9 @@ function commerce_avalara_commerce_line_item_type_info() {
   $line_item_types = array();
 
   $line_item_types['avalara_tax'] = array(
-    'name' => t('Sales tax'),
+    'name' => t('Avalara tax'),
     'description' => t('Calculate AvaTax'),
-    'add_form_submit_value' => t('Add Sales tax'),
+    'add_form_submit_value' => t('Add Tax'),
     'base' => 'commerce_avalara_line_item',
   );
 
