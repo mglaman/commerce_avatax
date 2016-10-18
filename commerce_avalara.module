@@ -237,7 +237,7 @@ function commerce_avalara_line_item_title($line_item) {
   if (!empty($line_item->data['commerce_avalara']['display_title'])) {
     return $line_item->data['commerce_avalara']['display_title'];
   }
-  return t('Sales Tax');
+  return t('Tax');
 }
 
 /**
@@ -268,13 +268,30 @@ function commerce_avalara_field_widget_form_alter(&$element, &$form_state, $cont
  *   The shipping line item for the specified service initialized to the given
  *   unit price.
  */
-function commerce_avalara_line_item_new($tax_price, $order_id = 0, $data = array()) {
+function commerce_avalara_line_item_new($tax_price, $tax_type = 'sales_tax', $order_id = 0, $data = array()) {
+  $types_mapping = array(
+    'sales_tax' => array(
+      'line_item_label' => t('Sales Tax'),
+      'price_component' => 'avalara_sales_tax',
+    ),
+    'vat' => array(
+      'line_item_label' => t('VAT'),
+      'price_component' => 'avalara_vat',
+    ),
+  );
+  // Defaults to Sales Tax.
+  $line_item_label = t('Sales Tax');
+  $price_component = 'avalara_sales_tax';
+  if (isset($types_mapping[$tax_type])) {
+    $line_item_label = $types_mapping[$tax_type]['line_item_label'];
+    $price_component = $types_mapping[$tax_type]['price_component'];
+  }
   // Create the new line item.
   $line_item = entity_create('commerce_line_item', array(
     'type' => 'avalara_tax',
     'order_id' => $order_id,
     'quantity' => 1,
-    'line_item_label' => t('Sales Tax'),
+    'line_item_label' => $line_item_label,
     'data' => $data,
   ));
 
@@ -292,7 +309,7 @@ function commerce_avalara_line_item_new($tax_price, $order_id = 0, $data = array
   );
 
   $line_item_wrapper->commerce_unit_price->data = commerce_price_component_add($base_price, 'base_price', $base_price, TRUE);
-  $line_item_wrapper->commerce_unit_price->data = commerce_price_component_add($line_item_wrapper->commerce_unit_price->value(), 'avalara_sales_tax', $tax_price, FALSE);
+  $line_item_wrapper->commerce_unit_price->data = commerce_price_component_add($line_item_wrapper->commerce_unit_price->value(), $price_component, $tax_price, FALSE);
 
   // Return the line item.
   return $line_item;
@@ -316,10 +333,14 @@ function commerce_avalara_calculate_tax($order) {
     $customer_profile_to_use = module_exists('commerce_shipping') ? 'shipping' : 'billing';
   }
 
-  // Checks if the Sales Tax needs to be calculated for this address.
-  if (!commerce_avalara_check_address($order, 'commerce_customer_' . $customer_profile_to_use)) {
-    return;
+  $pane_id = 'customer_profile_' . $customer_profile_to_use;
+  if ($field_name = variable_get('commerce_' . $pane_id . '_field', '')) {
+    // Checks if the Sales Tax needs to be calculated for this address.
+    if (!commerce_avalara_check_address($order, $field_name)) {
+      return;
+    }
   }
+
   module_load_include('inc', 'commerce_avalara', 'includes/commerce_avalara.calc');
   $request = commerce_avalara_create_transaction($order, 'SalesOrder');
 
@@ -333,8 +354,18 @@ function commerce_avalara_calculate_tax($order) {
       'currency_code' => $currency_code,
       'data' => array(),
     );
+
+    // Assume VAT when the customer's country is not in the US|CA.
+    $tax_type = 'sales_tax';
+    if (isset($order_wrapper->{$field_name})) {
+      $customer_address = $order_wrapper->{$field_name}->commerce_customer_address->value();
+      if (!in_array($customer_address['country'], array('US', 'CA'))) {
+        $tax_type = 'vat';
+      }
+    }
+
     // Create a new Sales tax line item with the calculated rate.
-    $line_item = commerce_avalara_line_item_new($tax_price, $order->order_id);
+    $line_item = commerce_avalara_line_item_new($tax_price, $tax_type, $order->order_id);
     commerce_avalara_add_tax_line_item($line_item, $order);
   }
   else {
@@ -369,25 +400,22 @@ function commerce_avalara_add_tax_line_item($line_item, $order) {
 /**
  * Checks if the Avatax service needs to be called for this address.
  */
-function commerce_avalara_check_address($order, $customer_profile_field) {
+function commerce_avalara_check_address($order, $field_name) {
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+   if (isset($order_wrapper->{$field_name}) && isset($order_wrapper->{$field_name}->commerce_customer_address)) {
+     $customer_address = $order_wrapper->{$field_name}->commerce_customer_address->value();
 
-  if (isset($order_wrapper->{$customer_profile_field}) && isset($order_wrapper->{$customer_profile_field}->commerce_customer_address)) {
-    $customer_address = $order_wrapper->{$customer_profile_field}->commerce_customer_address->value();
+     // Don't calculate Sales Tax if the provided address is in the US but the
+     // State is not in Avax states list.
+     if ($customer_address['country'] == 'US') {
+       $avatax_states = variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'select_states', array());
 
-    // Don't calculate Sales Tax if the provided address is not in the US
-    // or Canada.
-    if (!in_array($customer_address['country'], array('US', 'CA'))) {
-      return FALSE;
-    }
-
-    $avatax_states = variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'select_states', array());
-
-    // Exit if not a valid AvaTax state.
-    if (!empty($avatax_states) && !in_array($customer_address['administrative_area'], $avatax_states)) {
-      return FALSE;
-    }
-  }
+       // Exit if not a valid AvaTax state.
+       if (!empty($avatax_states) && !in_array($customer_address['administrative_area'], $avatax_states)) {
+         return FALSE;
+       }
+     }
+   }
 
   return TRUE;
 }

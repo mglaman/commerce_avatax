@@ -64,7 +64,17 @@ function commerce_avalara_create_transaction($order, $transaction_type = 'SalesO
       }
     }
   }
-  _commerce_avalara_transaction_add_lines($request_body, $order_wrapper->commerce_line_items);
+
+  $tax_included = FALSE;
+  // If the ship from country is not in the US|CA, assume the price entered
+  // is tax inclusive.
+  if (isset($request_body['addresses']['shipFrom']['country'])) {
+    if (!in_array($request_body['addresses']['shipFrom']['country'], array('CA', 'US'))) {
+      $tax_included = TRUE;
+    }
+  }
+
+  _commerce_avalara_transaction_add_lines($request_body, $order_wrapper->commerce_line_items, $tax_included);
   drupal_alter('commerce_avalara_create_transaction', $request_body, $order);
 
   // Create the transaction.
@@ -80,10 +90,13 @@ function commerce_avalara_create_transaction($order, $transaction_type = 'SalesO
  *   The request body that needs to be altered.
  * @param array $line_items
  *   The line items that need to be added to the transaction.
+ * @param bool $tax_included
+ *   Boolean indicating whether or not the tax is included.
  * @param
  */
-function _commerce_avalara_transaction_add_lines(&$request_body, $line_items) {
+function _commerce_avalara_transaction_add_lines(&$request_body, $line_items, $tax_included = FALSE) {
   $lines = array();
+  $tax_included = $tax_included ? 'true' : 'false';
 
   foreach ($line_items as $delta => $line_item_wrapper) {
     // Ensure the line item still exists.
@@ -114,6 +127,7 @@ function _commerce_avalara_transaction_add_lines(&$request_body, $line_items) {
         // The discounted boolean needs to be set to TRUE, otherwise, discount
         // document level won't be applied.
         'discounted' => 'true',
+        'taxIncluded' => $tax_included,
       );
     }
     elseif ($line_item->type === 'shipping') {
