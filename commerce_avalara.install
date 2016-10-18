@@ -82,6 +82,7 @@ function commerce_avalara_uninstall() {
  */
 function commerce_avalara_install_helper() {
   drupal_load('module', 'commerce_avalara');
+  drupal_load('module', 'commerce_product');
   _commerce_avalara_configure_tax_code_field();
   _commerce_avalara_configure_tax_exemption_field();
 }
