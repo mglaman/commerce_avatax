@@ -365,8 +365,8 @@ function commerce_avatax_calculate_tax($order) {
   $request = commerce_avatax_create_transaction($order, 'SalesOrder');
 
   // Parse the result request.
-  if (!empty($request['success']) && isset($request['result'][0])) {
-    $result = $request['result'][0];
+  if (!empty($request['success']) && isset($request['result']['totalTax'])) {
+    $result = $request['result'];
     $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
     $currency_code = $order_wrapper->commerce_order_total->currency_code->value();
     $tax_price = array(
@@ -523,11 +523,10 @@ function commerce_avatax_commerce_payment_order_paid_in_full($order) {
     $request = commerce_avatax_create_transaction($order, 'SalesInvoice', TRUE);
 
     // Parse the result request.
-    if ($request['success'] && isset($request['result'][0])) {
-      $result = $request['result'][0];
+    if ($request['success'] && isset($request['result']['id'])) {
       $order->data['commerce_avatax'] = array(
-        'transaction_id' => $result['id'],
-        'transaction_code' => $result['code'],
+        'transaction_id' => $request['result']['id'],
+        'transaction_code' => $request['result']['code'],
       );
     }
   }
@@ -851,7 +850,7 @@ function commerce_avatax_theme() {
 
 /**
  * Returns a mapping between the Addressfield names and the field names that
- * need to be sent to the Avatax API.
+ * need to be sent to the Avatax API v1.
  */
 function commerce_avatax_address_fields_mapping($flip = FALSE) {
   $mapping = array(

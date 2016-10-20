@@ -88,7 +88,7 @@ function commerce_avatax_create_transaction($order, $transaction_type = 'SalesOr
   drupal_alter('commerce_avatax_create_transaction', $request_body, $order);
 
   // Create the transaction.
-  $request = $avatax_object->transactionsCreate(array($request_body));
+  $request = $avatax_object->transactionsCreate($request_body);
 
   return $request;
 }

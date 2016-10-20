@@ -89,7 +89,7 @@ function commerce_avatax_install_helper() {
 }
 
 /**
- * Configure the "commerce_avatax_tax_code" field.
+ * Configure the "tax code" field.
  */
 function _commerce_avatax_configure_tax_code_field() {
   $field_name = COMMERCE_AVATAX_TAX_CODE_FIELD;
