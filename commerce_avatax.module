@@ -5,25 +5,37 @@
  * AvaTax service integration from Avalara, Inc.
  */
 
-define('COMMERCE_AVALARA_PRODUCTION_MODE', 'prod');
-define('COMMERCE_AVALARA_DEVELOPMENT_MODE', 'dev');
-define('COMMERCE_AVALARA_VAR_PREFIX', 'commerce_avalara_');
-// Defines constants for the credentials field names.
-define('COMMERCE_AVALARA_ACCOUNT_NUMBER_FIELD', 'account_number');
-define('COMMERCE_AVALARA_LICENSE_KEY_FIELD', 'license_key');
-define('COMMERCE_AVALARA_COMPANY_CODE_FIELD', 'company_code');
+define('COMMERCE_AVATAX_PRODUCTION_MODE', 'prod');
+define('COMMERCE_AVATAX_DEVELOPMENT_MODE', 'dev');
+define('COMMERCE_AVATAX_VAR_PREFIX', 'commerce_avatax_');
+// Defines constants for the field names.
+define('COMMERCE_AVATAX_ACCOUNT_NUMBER_FIELD', 'account_number');
+define('COMMERCE_AVATAX_LICENSE_KEY_FIELD', 'license_key');
+define('COMMERCE_AVATAX_COMPANY_CODE_FIELD', 'company_code');
+define('COMMERCE_AVATAX_TAX_CODE_FIELD', 'commerce_avatax_code');
+define('COMMERCE_AVATAX_EXEMPTION_CODE_FIELD', 'commerce_avatax_exemption_code');
+define('COMMERCE_AVATAX_VAT_ID_FIELD', 'commerce_avatax_vat_id');
 
+/**
+ * Implements hook_page_alter().
+ */
+function commerce_avatax_page_alter() {
+  $path = current_path();
+  if (module_exists('commerce_tax') && strpos($path, 'admin/commerce/config/taxes') === 0) {
+    drupal_set_message(t('Please disable Commerce Tax module to avoid duplicate sales tax line items. Configure Commerce AvaTax !here.', array('!here' => l(t('here'), 'admin/commerce/config/avatax'))));
+  }
+}
 
 /**
  * Implements hook_permission().
  */
-function commerce_avalara_permission() {
+function commerce_avatax_permission() {
   return array(
-    'administer avalara' => array(
-      'title' => t('Administer Avalara'),
-      'description' => t('Manage settings for the Avalara Sales Tax'),
+    'administer avatax' => array(
+      'title' => t('Administer Avatax'),
+      'description' => t('Allows users to configure Commerce AvaTax'),
     ),
-    'configure tax exemptions' => array(
+    'configure avatax exemptions' => array(
       'title' => t('Configure Tax exemptions'),
       'description' => t('Allow users to configure tax exemptions'),
     ),
@@ -33,72 +45,72 @@ function commerce_avalara_permission() {
 /**
  * Implements hook_field_access().
  */
-function commerce_avalara_field_access($op, $field, $entity_type, $entity, $account) {
-  if ($field['field_name'] == 'avalara_tax_exemption_code' && $op == 'edit') {
-    return user_access('configure tax exemptions', $account);
+function commerce_avatax_field_access($op, $field, $entity_type, $entity, $account) {
+  if ($field['field_name'] == 'commerce_avatax_exemption_code' && $op == 'edit') {
+    return user_access('configure avatax exemptions', $account);
   }
 }
 
 /**
  * Implements hook_menu().
  */
-function commerce_avalara_menu() {
-  $items['admin/commerce/config/avalara'] = array(
-    'title' => 'Avalara ',
-    'description' => 'Avalara Configuration',
+function commerce_avatax_menu() {
+  $items['admin/commerce/config/avatax'] = array(
+    'title' => 'Avatax ',
+    'description' => 'Avatax Configuration',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('commerce_avalara_credentials_settings_form'),
-    'file' => 'includes/commerce_avalara.admin.inc',
-    'access arguments' => array('administer avalara'),
+    'page arguments' => array('commerce_avatax_credentials_settings_form'),
+    'file' => 'includes/commerce_avatax.admin.inc',
+    'access arguments' => array('administer avatax'),
     'type' => MENU_NORMAL_ITEM,
   );
-  $items['admin/commerce/config/avalara/credentials'] = array(
+  $items['admin/commerce/config/avatax/credentials'] = array(
     'title' => 'Credentials',
     'type' => MENU_DEFAULT_LOCAL_TASK,
     'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
-    'access arguments' => array('administer avalara'),
+    'access arguments' => array('administer avatax'),
     'weight' => -10,
   );
-  $items['admin/commerce/config/avalara/shipping-settings'] = array(
+  $items['admin/commerce/config/avatax/shipping-settings'] = array(
     'title' => 'Shipping settings',
     'type' => MENU_LOCAL_TASK,
-    'access arguments' => array('administer avalara'),
-    'page arguments' => array('commerce_avalara_shipping_settings_form'),
+    'access arguments' => array('administer avatax'),
+    'page arguments' => array('commerce_avatax_shipping_settings_form'),
     'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
     'weight' => -1,
   );
-  $items['admin/commerce/config/avalara/address-validation'] = array(
+  $items['admin/commerce/config/avatax/address-validation'] = array(
     'title' => 'Address validation',
     'type' => MENU_LOCAL_TASK,
-    'access callback' => 'commerce_avalara_address_validation_access',
-    'access arguments' => array('administer avalara'),
-    'page arguments' => array('commerce_avalara_address_settings_form'),
+    'access callback' => 'commerce_avatax_address_validation_access',
+    'access arguments' => array('administer avatax'),
+    'page arguments' => array('commerce_avatax_address_settings_form'),
     'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
   );
-  $items['admin/commerce/config/avalara/general-settings'] = array(
+  $items['admin/commerce/config/avatax/general-settings'] = array(
     'title' => 'General settings',
     'type' => MENU_LOCAL_TASK,
-    'access arguments' => array('administer avalara'),
-    'page arguments' => array('commerce_avalara_general_settings_form'),
+    'access arguments' => array('administer avatax'),
+    'page arguments' => array('commerce_avatax_general_settings_form'),
     'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+  );
+  $items['admin/commerce/config/avatax/global-vat'] = array(
+    'title' => 'Global VAT',
+    'type' => MENU_LOCAL_TASK,
+    'access arguments' => array('administer avatax'),
+    'page arguments' => array('commerce_avatax_global_vat_settings_form'),
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+    'weight' => 10,
   );
   $items['admin/commerce/orders/%commerce_order/edit/calculate-tax'] = array(
     'title' => 'Calculate Taxes',
-    'description' => 'Call the Avalara Tax service in order to calculate & apply the Tax amount.',
+    'description' => 'Call the AvaTax service in order to calculate & apply the Tax amount.',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('commerce_avalara_order_admin_calculate_tax_form', 3),
-    'access callback' => 'commerce_avalara_order_admin_form_access',
+    'page arguments' => array('commerce_avatax_order_admin_calculate_tax_form', 3),
+    'access callback' => 'commerce_avatax_order_admin_form_access',
     'access arguments' => array(3),
     'type' => MENU_LOCAL_ACTION,
-    'file' => 'includes/commerce_avalara.admin.inc',
-  );
-  $items['admin/commerce/config/avalara/global-vat'] = array(
-    'title' => 'Global VAT',
-    'type' => MENU_LOCAL_TASK,
-    'access arguments' => array('administer avalara'),
-    'page arguments' => array('commerce_avalara_global_vat_settings_form'),
-    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
-    'weight' => 10,
+    'file' => 'includes/commerce_avatax.admin.inc',
   );
 
   return $items;
@@ -107,11 +119,11 @@ function commerce_avalara_menu() {
 /**
  * Access callback: determines access to the "Calculate Tax" local action.
  */
-function commerce_avalara_order_admin_form_access($order) {
-  $company_code = commerce_avalara_company_code();
+function commerce_avatax_order_admin_form_access($order) {
+  $company_code = commerce_avatax_company_code();
   // Skip tax calculation if the option is disabled, or if the company code
   // is empty & skip cart orders.
-  if (!variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'tax_calculation_enabled', TRUE) || empty($company_code) || commerce_cart_order_is_cart($order)) {
+  if (!variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'tax_calculation_enabled', TRUE) || empty($company_code) || commerce_cart_order_is_cart($order)) {
     return FALSE;
   }
 
@@ -125,36 +137,36 @@ function commerce_avalara_order_admin_form_access($order) {
 /**
  * Access callback for the address validation tab.
  */
-function commerce_avalara_address_validation_access($permission) {
+function commerce_avatax_address_validation_access($permission) {
   return module_exists('commerce_shipping') && user_access($permission);
 }
 
 /**
  * Returns the API mode.
  */
-function commerce_avalara_api_mode() {
-  return variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'api_mode', COMMERCE_AVALARA_DEVELOPMENT_MODE);
+function commerce_avatax_api_mode() {
+  return variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'api_mode', COMMERCE_AVATAX_DEVELOPMENT_MODE);
 }
 
 /**
- * Returns the site-wide Avalara account number.
+ * Returns the site-wide AvaTax account number.
  */
-function commerce_avalara_account_number() {
-  return variable_get(COMMERCE_AVALARA_VAR_PREFIX . commerce_avalara_api_mode() . '_' . COMMERCE_AVALARA_ACCOUNT_NUMBER_FIELD, '');
+function commerce_avatax_account_number() {
+  return variable_get(COMMERCE_AVATAX_VAR_PREFIX . commerce_avatax_api_mode() . '_' . COMMERCE_AVATAX_ACCOUNT_NUMBER_FIELD, '');
 }
 
 /**
- * Returns the site-wide Avalara company code for a given API mode.
+ * Returns the site-wide AvaTax company code for a given API mode.
  */
-function commerce_avalara_company_code() {
-  return variable_get(COMMERCE_AVALARA_VAR_PREFIX . commerce_avalara_api_mode() . '_' . COMMERCE_AVALARA_COMPANY_CODE_FIELD, '');
+function commerce_avatax_company_code() {
+  return variable_get(COMMERCE_AVATAX_VAR_PREFIX . commerce_avatax_api_mode() . '_' . COMMERCE_AVATAX_COMPANY_CODE_FIELD, '');
 }
 
 /**
- * Returns the site-wide Avalara license key.
+ * Returns the site-wide AvaTax license key.
  */
-function commerce_avalara_license_key() {
-  return variable_get(COMMERCE_AVALARA_VAR_PREFIX . commerce_avalara_api_mode() . '_' . COMMERCE_AVALARA_LICENSE_KEY_FIELD, '');
+function commerce_avatax_license_key() {
+  return variable_get(COMMERCE_AVATAX_VAR_PREFIX . commerce_avatax_api_mode() . '_' . COMMERCE_AVATAX_LICENSE_KEY_FIELD, '');
 }
 
 /**
@@ -168,13 +180,13 @@ function commerce_avalara_license_key() {
  * @return Avatax|bool.
  *   The constructed Avatax object or FALSE if the library could not be loaded..
  */
-function commerce_avalara_object($api_key = '', $api_mode = '') {
-  $avalara = &drupal_static(__FUNCTION__, array());
+function commerce_avatax_object($api_key = '', $api_mode = '') {
+  $avatax = &drupal_static(__FUNCTION__, array());
 
   // If the Api key wasn't provided.
   if (empty($api_key)) {
-    $account_number = commerce_avalara_account_number();
-    $license_key = commerce_avalara_license_key();
+    $account_number = commerce_avatax_account_number();
+    $license_key = commerce_avatax_license_key();
 
     if (!empty($account_number) && !empty($license_key)) {
       $api_key = base64_encode("$account_number:$license_key");
@@ -184,32 +196,32 @@ function commerce_avalara_object($api_key = '', $api_mode = '') {
     }
   }
 
-  if (!isset($avalara[$api_key])) {
+  if (!isset($avatax[$api_key])) {
     $logger = NULL;
-    $api_mode = empty($api_mode) ? commerce_avalara_api_mode() : $api_mode;
+    $api_mode = empty($api_mode) ? commerce_avatax_api_mode() : $api_mode;
 
     // Specify the logger if the logging was enabled.
-    if (variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'enable_logging', FALSE)) {
+    if (variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'enable_logging', FALSE)) {
       $logger = 'watchdog';
     }
 
-    $avalara[$api_key] = new Avatax($api_key, $api_mode, $logger);
+    $avatax[$api_key] = new Avatax($api_key, $api_mode, $logger);
   }
 
-  return $avalara[$api_key];
+  return $avatax[$api_key];
 }
 
 /**
  * Implements hook_commerce_line_item_type_info().
  */
-function commerce_avalara_commerce_line_item_type_info() {
+function commerce_avatax_commerce_line_item_type_info() {
   $line_item_types = array();
 
-  $line_item_types['avalara_tax'] = array(
-    'name' => t('Avalara tax'),
-    'description' => t('Calculate AvaTax'),
+  $line_item_types['avatax'] = array(
+    'name' => t('AvaTax'),
+    'description' => t('Tax calculated by AvaTax.'),
     'add_form_submit_value' => t('Add Tax'),
-    'base' => 'commerce_avalara_line_item',
+    'base' => 'commerce_avatax_line_item',
   );
 
   return $line_item_types;
@@ -218,18 +230,18 @@ function commerce_avalara_commerce_line_item_type_info() {
 /**
  * Implements hook_commerce_price_component_type_info().
  */
-function commerce_avalara_commerce_price_component_type_info() {
+function commerce_avatax_commerce_price_component_type_info() {
   $components = array();
 
   // Define a generic AvaTax price component type.
-  $components['avalara_sales_tax'] = array(
+  $components['avatax_sales_tax'] = array(
     'title' => t('AvaTax sales tax'),
-    'display_title' => variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'price_component_title', t('Sales tax')),
+    'display_title' => variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'price_component_title', t('Sales tax')),
     'weight' => 25,
   );
 
   // Define a price component for VAT.
-  $components['avalara_vat'] = array(
+  $components['avatax_vat'] = array(
     'title' => t('AvaTax VAT'),
     'display_title' => t('VAT'),
     'weight' => 25,
@@ -241,9 +253,9 @@ function commerce_avalara_commerce_price_component_type_info() {
 /**
  * Returns the title of an AvaTax line item.
  */
-function commerce_avalara_line_item_title($line_item) {
-  if (!empty($line_item->data['commerce_avalara']['display_title'])) {
-    return $line_item->data['commerce_avalara']['display_title'];
+function commerce_avatax_line_item_title($line_item) {
+  if (!empty($line_item->data['commerce_avatax']['display_title'])) {
+    return $line_item->data['commerce_avatax']['display_title'];
   }
   return t('Tax');
 }
@@ -251,10 +263,10 @@ function commerce_avalara_line_item_title($line_item) {
 /**
  * Implements hook_field_widget_form_alter().
  */
-function commerce_avalara_field_widget_form_alter(&$element, &$form_state, $context) {
+function commerce_avatax_field_widget_form_alter(&$element, &$form_state, $context) {
   if ($context['instance']['widget']['type'] == 'commerce_line_item_manager') {
     foreach ($element['line_items'] as $line_item_id => $line_item) {
-      if ($line_item['line_item']['#value']->type == 'avalara_tax') {
+      if ($line_item['line_item']['#value']->type == 'avatax') {
         $element['line_items'][$line_item_id]['commerce_unit_price']['#access'] = FALSE;
         $element['line_items'][$line_item_id]['quantity']['#access'] = FALSE;
       }
@@ -276,27 +288,27 @@ function commerce_avalara_field_widget_form_alter(&$element, &$form_state, $cont
  *   The shipping line item for the specified service initialized to the given
  *   unit price.
  */
-function commerce_avalara_line_item_new($tax_price, $tax_type = 'sales_tax', $order_id = 0, $data = array()) {
+function commerce_avatax_line_item_new($tax_price, $tax_type = 'sales_tax', $order_id = 0, $data = array()) {
   $types_mapping = array(
     'sales_tax' => array(
       'line_item_label' => t('Sales Tax'),
-      'price_component' => 'avalara_sales_tax',
+      'price_component' => 'avatax_sales_tax',
     ),
     'vat' => array(
       'line_item_label' => t('VAT'),
-      'price_component' => 'avalara_vat',
+      'price_component' => 'avatax_vat',
     ),
   );
   // Defaults to Sales Tax.
   $line_item_label = t('Sales Tax');
-  $price_component = 'avalara_sales_tax';
+  $price_component = $types_mapping['sales_tax']['price_component'];
   if (isset($types_mapping[$tax_type])) {
     $line_item_label = $types_mapping[$tax_type]['line_item_label'];
     $price_component = $types_mapping[$tax_type]['price_component'];
   }
   // Create the new line item.
   $line_item = entity_create('commerce_line_item', array(
-    'type' => 'avalara_tax',
+    'type' => 'avatax',
     'order_id' => $order_id,
     'quantity' => 1,
     'line_item_label' => $line_item_label,
@@ -326,14 +338,14 @@ function commerce_avalara_line_item_new($tax_price, $tax_type = 'sales_tax', $or
 /**
  * Calculate sales tax for a given order.
  */
-function commerce_avalara_calculate_tax($order) {
-  $company_code = commerce_avalara_company_code();
+function commerce_avatax_calculate_tax($order) {
+  $company_code = commerce_avatax_company_code();
   // Skip tax calculation if the option is disabled, or if the company code
   // is empty.
-  if (!variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'tax_calculation_enabled', TRUE) || empty($company_code)) {
+  if (!variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'tax_calculation_enabled', TRUE) || empty($company_code)) {
     return;
   }
-  $customer_profile_to_use = variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'commerce_avalara_tax_address', FALSE);
+  $customer_profile_to_use = variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'tax_address', FALSE);
 
   // Retrieve the destination customer profile type to use for calculating the
   // Sales Tax.
@@ -344,13 +356,13 @@ function commerce_avalara_calculate_tax($order) {
   $pane_id = 'customer_profile_' . $customer_profile_to_use;
   if ($field_name = variable_get('commerce_' . $pane_id . '_field', '')) {
     // Checks if the Sales Tax needs to be calculated for this address.
-    if (!commerce_avalara_check_address($order, $field_name)) {
+    if (!commerce_avatax_check_address($order, $field_name)) {
       return;
     }
   }
 
-  module_load_include('inc', 'commerce_avalara', 'includes/commerce_avalara.calc');
-  $request = commerce_avalara_create_transaction($order, 'SalesOrder');
+  module_load_include('inc', 'commerce_avatax', 'includes/commerce_avatax.calc');
+  $request = commerce_avatax_create_transaction($order, 'SalesOrder');
 
   // Parse the result request.
   if (!empty($request['success']) && isset($request['result'][0])) {
@@ -373,8 +385,8 @@ function commerce_avalara_calculate_tax($order) {
     }
 
     // Create a new Sales tax line item with the calculated rate.
-    $line_item = commerce_avalara_line_item_new($tax_price, $tax_type, $order->order_id);
-    commerce_avalara_add_tax_line_item($line_item, $order);
+    $line_item = commerce_avatax_line_item_new($tax_price, $tax_type, $order->order_id);
+    commerce_avatax_add_tax_line_item($line_item, $order);
   }
   else {
     drupal_set_message(t('Could not calculate the Tax'), 'error');
@@ -391,9 +403,9 @@ function commerce_avalara_calculate_tax($order) {
  * @param object $order
  *   The order to add the avatax line item to.
  */
-function commerce_avalara_add_tax_line_item($line_item, $order) {
+function commerce_avatax_add_tax_line_item($line_item, $order) {
   // Delete any existing AvaTax line items from the order.
-  commerce_avalara_delete_sales_tax_line_items($order, TRUE);
+  commerce_avatax_delete_sales_tax_line_items($order, TRUE);
 
   // Save the incoming line item now so we get its ID.
   commerce_line_item_save($line_item);
@@ -408,7 +420,7 @@ function commerce_avalara_add_tax_line_item($line_item, $order) {
 /**
  * Checks if the Avatax service needs to be called for this address.
  */
-function commerce_avalara_check_address($order, $field_name) {
+function commerce_avatax_check_address($order, $field_name) {
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
    if (isset($order_wrapper->{$field_name}) && isset($order_wrapper->{$field_name}->commerce_customer_address)) {
      $customer_address = $order_wrapper->{$field_name}->commerce_customer_address->value();
@@ -416,7 +428,7 @@ function commerce_avalara_check_address($order, $field_name) {
      // Don't calculate Sales Tax if the provided address is in the US but the
      // State is not in Avax states list.
      if ($customer_address['country'] == 'US') {
-       $avatax_states = variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'select_states', array());
+       $avatax_states = variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'select_states', array());
 
        // Exit if not a valid AvaTax state.
        if (!empty($avatax_states) && !in_array($customer_address['administrative_area'], $avatax_states)) {
@@ -429,14 +441,14 @@ function commerce_avalara_check_address($order, $field_name) {
 }
 
 /**
- * Deletes Avalara Sales Tax line items of an order.
+ * Deletes AvaTax Sales Tax line items of an order.
  *
  * @param object $order
  *   The order object to delete the line items from.
  * @param $skip_save
  *   Boolean indicating whether or not to skip saving the order in this function.
  */
-function commerce_avalara_delete_sales_tax_line_items($order, $skip_save = FALSE) {
+function commerce_avatax_delete_sales_tax_line_items($order, $skip_save = FALSE) {
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
 
   // When deleting more than one line item, metadata_wrapper will give problems
@@ -446,7 +458,7 @@ function commerce_avalara_delete_sales_tax_line_items($order, $skip_save = FALSE
 
   foreach ($order_wrapper->commerce_line_items as $delta => $line_item_wrapper) {
     // If this line item is a Sales tax line item...
-    if ($line_item_wrapper->type->value() == 'avalara_tax') {
+    if ($line_item_wrapper->type->value() == 'avatax') {
       // Store its ID for later deletion and remove the reference from the line
       // item reference field.
       $line_item_ids[] = $line_item_wrapper->line_item_id->value();
@@ -469,7 +481,7 @@ function commerce_avalara_delete_sales_tax_line_items($order, $skip_save = FALSE
 /**
  * Generate AvaTax user name as approximation of e-mail address.
  */
-function commerce_avalara_email_to_username($user_email) {
+function commerce_avatax_email_to_username($user_email) {
   // Default to the first part of the e-mail address.
   $name = substr($user_email, 0, strpos($user_email, '@'));
 
@@ -487,19 +499,19 @@ function commerce_avalara_email_to_username($user_email) {
  *
  * Create a committed SalesInvoice transaction when an order is paid in full.
  */
-function commerce_avalara_commerce_payment_order_paid_in_full($order) {
-  $company_code = commerce_avalara_company_code();
+function commerce_avatax_commerce_payment_order_paid_in_full($order) {
+  $company_code = commerce_avatax_company_code();
   // Skip the transaction creation
-  if (!variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'tax_calculation_enabled', TRUE) || empty($company_code)) {
+  if (!variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'tax_calculation_enabled', TRUE) || empty($company_code)) {
     return;
   }
-  // Check if we have an Avalara tax line item present on this order.
+  // Check if we have an AvaTax tax line item present on this order.
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
   $tax_line_item_found = FALSE;
 
   foreach ($order_wrapper->commerce_line_items as $delta => $line_item_wrapper) {
     // If this line item is a Sales tax line item...
-    if ($line_item_wrapper->type->value() == 'avalara_tax') {
+    if ($line_item_wrapper->type->value() == 'avatax') {
       $tax_line_item_found = TRUE;
       break;
     }
@@ -507,13 +519,13 @@ function commerce_avalara_commerce_payment_order_paid_in_full($order) {
 
   // Commit the transaction.
   if ($tax_line_item_found) {
-    module_load_include('inc', 'commerce_avalara', 'includes/commerce_avalara.calc');
-    $request = commerce_avalara_create_transaction($order, 'SalesInvoice', TRUE);
+    module_load_include('inc', 'commerce_avatax', 'includes/commerce_avatax.calc');
+    $request = commerce_avatax_create_transaction($order, 'SalesInvoice', TRUE);
 
     // Parse the result request.
     if ($request['success'] && isset($request['result'][0])) {
       $result = $request['result'][0];
-      $order->data['commerce_avalara'] = array(
+      $order->data['commerce_avatax'] = array(
         'transaction_id' => $result['id'],
         'transaction_code' => $result['code'],
       );
@@ -524,11 +536,11 @@ function commerce_avalara_commerce_payment_order_paid_in_full($order) {
 /**
  * COMMIT an existing transaction for a given $order.
  */
-function commerce_avalara_commit_transaction($order) {
-  if (isset($order->data['commerce_avalara']['transaction_code']) && $avalara = commerce_avalara_object()) {
-    $company_code = commerce_avalara_company_code();
+function commerce_avatax_commit_transaction($order) {
+  if (isset($order->data['commerce_avatax']['transaction_code']) && $avatax = commerce_avatax_object()) {
+    $company_code = commerce_avatax_company_code();
     if (!empty($company_code)) {
-      $avalara->transactionsCommit($company_code, $order->data['commerce_avalara']['transaction_code']);
+      $avatax->transactionsCommit($company_code, $order->data['commerce_avatax']['transaction_code']);
     }
   }
 }
@@ -540,21 +552,21 @@ function commerce_avalara_commit_transaction($order) {
  * TODO: Probably create a queueItem in case multiple orders are deleted at
  * once?
  */
-function commerce_avalara_commerce_order_delete($order) {
-  commerce_avalara_void_transaction($order);
+function commerce_avatax_commerce_order_delete($order) {
+  commerce_avatax_void_transaction($order);
 }
 
 /**
  * VOID AvaTax transaction for $order.
  */
-function commerce_avalara_void_transaction($order) {
-  if (isset($order->data['commerce_avalara']['transaction_code']) && $avalara = commerce_avalara_object()) {
-    $company_code = commerce_avalara_company_code();
+function commerce_avatax_void_transaction($order) {
+  if (isset($order->data['commerce_avatax']['transaction_code']) && $avatax = commerce_avatax_object()) {
+    $company_code = commerce_avatax_company_code();
     if (!empty($company_code)) {
       $parameters = array(
         'code' => 'Cancelling the order',
       );
-      $avalara->transactionsVoid($company_code, $order->data['commerce_avalara']['transaction_code'], $parameters);
+      $avatax->transactionsVoid($company_code, $order->data['commerce_avatax']['transaction_code'], $parameters);
     }
   }
 }
@@ -562,15 +574,15 @@ function commerce_avalara_void_transaction($order) {
 /**
  * Implements hook_module_implements_alter().
  */
-function commerce_avalara_module_implements_alter(&$implementations, $hook) {
-  if ($hook == 'form_alter' && isset($implementations['commerce_avalara'])) {
+function commerce_avatax_module_implements_alter(&$implementations, $hook) {
+  if ($hook == 'form_alter' && isset($implementations['commerce_avatax'])) {
     // Place this module's implementation of hook_form_alter() is at the
     // end of the invocation in order to ensure our custom submit function
     // added to the checkout submit function runs last (once the customer
     // profile is saved).
-    $group = $implementations['commerce_avalara'];
-    unset($implementations['commerce_avalara']);
-    $implementations['commerce_avalara'] = $group;
+    $group = $implementations['commerce_avatax'];
+    unset($implementations['commerce_avatax']);
+    $implementations['commerce_avatax'] = $group;
   }
 }
 
@@ -579,10 +591,10 @@ function commerce_avalara_module_implements_alter(&$implementations, $hook) {
  *
  * Validate addresses during checkout if necessary.
  */
-function commerce_avalara_form_alter(&$form, &$form_state, $form_id) {
+function commerce_avatax_form_alter(&$form, &$form_state, $form_id) {
   // If we're dealing with a commerce checkout form.
   if (strpos($form_id, 'commerce_checkout_form_') === 0) {
-    $address_validation_enabled = variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'validate_address', TRUE);
+    $address_validation_enabled = variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'validate_address', TRUE);
 
     // Only alter the checkout form when the Address validation is enabled.
     if (!$address_validation_enabled) {
@@ -604,21 +616,20 @@ function commerce_avalara_form_alter(&$form, &$form_state, $form_id) {
     // If there are customer prfoiles pane on that page, we need to perform
     // Address validation.
     if ($customer_profile_pane_found) {
-      $form['#attributes']['class'][] = 'commerce-checkout-form';
       $form['#attached']['library'][] = array('system', 'ui.dialog');
-      $module_path = drupal_get_path('module', 'commerce_avalara');
-      $form['#attached']['js'][] = $module_path . '/js/commerce_avalara.js';
-      $form['#attached']['css'][] = $module_path . '/css/commerce_avalara_checkout.css';
+      $module_path = drupal_get_path('module', 'commerce_avatax');
+      $form['#attached']['js'][] = $module_path . '/js/commerce_avatax.js';
+      $form['#attached']['css'][] = $module_path . '/css/commerce_avatax.checkout.css';
       $form['address_validation_result'] = array(
         '#type' => 'container',
-        '#id' => 'commerce-avalara-address-validation-wrapper',
+        '#id' => 'commerce-avatax-address-validation-wrapper',
       );
 
       // Since we're preventing the default form submit, we need our custom
       // button to call the checkout continue validate functions.
       $validate_handlers = $form['buttons']['continue']['#validate'];
-      $validate_handlers[] = 'commerce_avalara_checkout_validate';
-      array_unshift($form['buttons']['continue']['#submit'], 'commerce_avalara_address_suggestion_apply');
+      $validate_handlers[] = 'commerce_avatax_checkout_validate';
+      array_unshift($form['buttons']['continue']['#submit'], 'commerce_avatax_address_suggestion_apply');
       // This submit button will be clicked when the main form is submitted.
       $form['buttons']['validate-address'] = array(
         '#value' => t('Validate address'),
@@ -626,10 +637,10 @@ function commerce_avalara_form_alter(&$form, &$form_state, $form_id) {
         '#attributes' => array(
           'class' => array('element-invisible'),
         ),
-        '#id' => 'commerce-avalara-address-validate-btn',
+        '#id' => 'commerce-avatax-address-validate-btn',
         '#validate' => $validate_handlers,
         '#ajax' => array(
-          'callback' => 'commerce_avalara_validate_shipping_address_ajax_callback',
+          'callback' => 'commerce_avatax_validate_shipping_address_ajax_callback',
           'progress' => array('type' => 'none'),
         ),
       );
@@ -645,11 +656,11 @@ function commerce_avalara_form_alter(&$form, &$form_state, $form_id) {
  * Submit handler for the continue button of the checkout form.
  * Apply the address suggestion if selected in the Jquery Dialog.
  */
-function commerce_avalara_address_suggestion_apply($form, &$form_state) {
+function commerce_avatax_address_suggestion_apply($form, &$form_state) {
   // If a suggestion has been selected in the Jquery Dialog, update the customer
   // profile fields.
-  if (isset($form_state['commerce_avalara']) && !empty($form_state['values']['use_suggested_address'])) {
-    $settings = $form_state['commerce_avalara'];
+  if (isset($form_state['commerce_avatax']) && !empty($form_state['values']['use_suggested_address'])) {
+    $settings = $form_state['commerce_avatax'];
     $address_suggestion = reset($settings['address_validation_result']['suggestions']);
 
     // Load the customer profile to update.
@@ -681,13 +692,13 @@ function commerce_avalara_address_suggestion_apply($form, &$form_state) {
 /**
  * Custom Ajax callback for setting up address validation popup.
  */
-function commerce_avalara_validate_shipping_address_ajax_callback($form, &$form_state) {
+function commerce_avatax_validate_shipping_address_ajax_callback($form, &$form_state) {
   $commands = array();
 
-  // See commerce_avalara_checkout_validate().
-  if (isset($form_state['commerce_avalara']) && !empty($form_state['commerce_avalara']['address_validation_failed'])) {
-    if (!empty($form_state['commerce_avalara']['address_validation_result'])) {
-      $validation_result = $form_state['commerce_avalara']['address_validation_result'];
+  // See commerce_avatax_checkout_validate().
+  if (isset($form_state['commerce_avatax']) && !empty($form_state['commerce_avatax']['address_validation_failed'])) {
+    if (!empty($form_state['commerce_avatax']['address_validation_result'])) {
+      $validation_result = $form_state['commerce_avatax']['address_validation_result'];
       $buttons = array();
 
       if ($validation_result['result'] == 'invalid') {
@@ -712,16 +723,16 @@ function commerce_avalara_validate_shipping_address_ajax_callback($form, &$form_
       }
 
       $commands[] = array(
-        'command' => 'address_modal_display',
+        'command' => 'commerce_avatax_address_modal_display',
         'html' => $validation_result['msg'],
         'buttons' => $buttons,
-        'selector' => '#commerce-avalara-address-validation-wrapper',
+        'selector' => '#commerce-avatax-address-validation-wrapper',
       );
     }
   }
   else {
     // We need to unblock the form submission.
-    $commands[] = ajax_command_invoke(NULL, 'commerceAvalaraUnblockCheckout', array());
+    $commands[] = ajax_command_invoke(NULL, 'commerceAvaTaxUnblockCheckout', array());
   }
 
   return array('#type' => 'ajax', '#commands' => $commands);
@@ -730,14 +741,14 @@ function commerce_avalara_validate_shipping_address_ajax_callback($form, &$form_
 /**
  * Checkout form validation callback.
  */
-function commerce_avalara_checkout_validate($form, &$form_state) {
+function commerce_avatax_checkout_validate($form, &$form_state) {
   // If the rebuild flag is set to TRUE by Commerce Checkout skip the address
   // validation.
   if (!empty($form_state['rebuild'])) {
     return;
   }
-  $form_state['commerce_avalara'] = array();
-  $profile_type = variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'commerce_avalara_tax_address', 'shipping');
+  $form_state['commerce_avatax'] = array();
+  $profile_type = variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'tax_address', 'shipping');
 
   // Validate the shipping profile if possible.
   if ($profile_type === 'shipping') {
@@ -761,7 +772,7 @@ function commerce_avalara_checkout_validate($form, &$form_state) {
     if (isset($profile_wrapper->commerce_customer_address)) {
       $address = $profile_wrapper->commerce_customer_address->value();
       $country = $address['country'];
-      $enabled_countries = variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'address_validate_countries', array('US'));
+      $enabled_countries = variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'address_validate_countries', array('US'));
 
       if (!is_array($enabled_countries)) {
         $enabled_countries = array($enabled_countries);
@@ -771,18 +782,18 @@ function commerce_avalara_checkout_validate($form, &$form_state) {
         return;
       }
       // Include the address validation functions.
-      module_load_include('inc', 'commerce_avalara', 'includes/commerce_avalara.address');
-      $validated_address = commerce_avalara_validate_address($address);
+      module_load_include('inc', 'commerce_avatax', 'includes/commerce_avatax.address');
+      $validated_address = commerce_avatax_validate_address($address);
       if ($validated_address === NULL) {
         return;
       }
-      $result = commerce_avalara_address_compare($address, $validated_address);
+      $result = commerce_avatax_address_compare($address, $validated_address);
 
       if ($result['result'] != 'valid') {
-        $form_state['commerce_avalara']['address_validation_failed'] = TRUE;
-        $form_state['commerce_avalara']['address_validation_result'] = $result;
+        $form_state['commerce_avatax']['address_validation_failed'] = TRUE;
+        $form_state['commerce_avatax']['address_validation_result'] = $result;
         // Store the customer profile ID to update.
-        $form_state['commerce_avalara']['customer_profile_to_update'] = $profile_wrapper->getIdentifier();
+        $form_state['commerce_avatax']['customer_profile_to_update'] = $profile_wrapper->getIdentifier();
         $form_state['rebuild'] = TRUE;
       }
     }
@@ -792,7 +803,7 @@ function commerce_avalara_checkout_validate($form, &$form_state) {
 /**
  * Returns address suggestion form.
  */
-function commerce_avalara_address_suggestion_form($form, &$form_state, $original_address, $suggestions) {
+function commerce_avatax_address_suggestion_form($form, &$form_state, $original_address, $suggestions) {
   if (count($suggestions) == 1) {
     $form['info'] = array(
       '#type' => 'markup',
@@ -807,11 +818,11 @@ function commerce_avalara_address_suggestion_form($form, &$form_state, $original
   }
   $form['orignal_addr'] = array(
     '#type' => 'markup',
-    '#markup' => '<p>' . t('Entered address is:') . '</p>' . theme('commerce_avalara_address', array('address' => $original_address)),
+    '#markup' => '<p>' . t('Entered address is:') . '</p>' . theme('commerce_avatax_address', array('address' => $original_address)),
   );
   $options = array();
   foreach ($suggestions as $key => $address) {
-    $options[$key] = theme('commerce_avalara_address', array(
+    $options[$key] = theme('commerce_avatax_address', array(
       'address' => $address,
     ));
   }
@@ -828,9 +839,9 @@ function commerce_avalara_address_suggestion_form($form, &$form_state, $original
 /**
  * Implements hook_theme().
  */
-function commerce_avalara_theme() {
+function commerce_avatax_theme() {
   return array(
-    'commerce_avalara_address' => array(
+    'commerce_avatax_address' => array(
       'variables' => array(
         'address' => array(),
       ),
@@ -842,7 +853,7 @@ function commerce_avalara_theme() {
  * Returns a mapping between the Addressfield names and the field names that
  * need to be sent to the Avatax API.
  */
-function commerce_avalara_address_fields_mapping($flip = FALSE) {
+function commerce_avatax_address_fields_mapping($flip = FALSE) {
   $mapping = array(
     'locality' => 'City',
     'administrative_area' => 'Region',
@@ -863,7 +874,7 @@ function commerce_avalara_address_fields_mapping($flip = FALSE) {
 /**
  * Format address array to be used in the address suggestion form.
  */
-function theme_commerce_avalara_address($variables) {
+function theme_commerce_avatax_address($variables) {
   $address = $variables['address'];
   $components = array($address['thoroughfare']);
 
@@ -879,13 +890,12 @@ function theme_commerce_avalara_address($variables) {
 }
 
 /**
- * Sends HTTP GET request to endpoint.
- * Copied from Commerce Avatax (Needs to be modified).
+ * Sends HTTP GET request to the Rest API v1.
  *
  * @return array
  *   Returns an associative array containing 'meta' and 'body' elements.
  */
-function commerce_avalara_v1_address_request($endpoint, $parameters) {
+function commerce_avatax_v1_address_request($endpoint, $parameters) {
   $querystring = '';
   if (is_array($parameters)) {
     $querystring = drupal_http_build_query($parameters);
@@ -902,14 +912,14 @@ function commerce_avalara_v1_address_request($endpoint, $parameters) {
     CURLOPT_CONNECTTIMEOUT => 10,
     CURLOPT_SSL_VERIFYPEER => TRUE,
   );
-  $api_mode = commerce_avalara_api_mode();
-  $account_number = commerce_avalara_account_number();
-  $license_key = commerce_avalara_license_key();
+  $api_mode = commerce_avatax_api_mode();
+  $account_number = commerce_avatax_account_number();
+  $license_key = commerce_avatax_license_key();
 
-  if ($api_mode == COMMERCE_AVALARA_DEVELOPMENT_MODE) {
+  if ($api_mode == COMMERCE_AVATAX_DEVELOPMENT_MODE) {
     $base_url = 'https://development.avalara.net/1.0';
   }
-  elseif ($api_mode == COMMERCE_AVALARA_PRODUCTION_MODE) {
+  elseif ($api_mode == COMMERCE_AVATAX_PRODUCTION_MODE) {
     $base_url = 'https://rest.avalara.net/1.0';
   }
 
@@ -933,7 +943,7 @@ function commerce_avalara_v1_address_request($endpoint, $parameters) {
   curl_close($curl);
 
   if ($body === FALSE) {
-    watchdog('commerce_avalara', 'AvaTax request failed. message: %msg', array(
+    watchdog('commerce_avatax', 'AvaTax request failed. message: %msg', array(
       '%msg' => curl_error($curl)), WATCHDOG_ERROR);
     return array(
       'body' => '',
@@ -942,8 +952,8 @@ function commerce_avalara_v1_address_request($endpoint, $parameters) {
   }
 
   // Check if the detailed logging is enabled.
-  if (variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'enable_logging', FALSE)) {
-    watchdog('commerce_avalara', 'Request info: !url !headers !response !meta', array(
+  if (variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'enable_logging', FALSE)) {
+    watchdog('commerce_avatax', 'Request info: !url !headers !response !meta', array(
       '!url' => "<pre>URL : $url</pre>",
       '!headers' => "<pre>Request Headers:\n" . var_export($curl_opts[CURLOPT_HTTPHEADER], TRUE) . '</pre>',
       '!response' => "<pre>Response:\n" . check_plain(var_export($body, TRUE)) . '</pre>',
@@ -969,15 +979,15 @@ function commerce_avalara_v1_address_request($endpoint, $parameters) {
 /**
  * Implements hook_flush_caches().
  */
-function commerce_avalara_flush_caches() {
-  module_load_install('commerce_avalara');
-  commerce_avalara_install_helper();
+function commerce_avatax_flush_caches() {
+  module_load_install('commerce_avatax');
+  commerce_avatax_install_helper();
 }
 
 /**
  * Allowed values callback for exemption codes.
  */
-function commerce_avalara_exemption_codes_allowed_values() {
+function commerce_avatax_exemption_codes_allowed_values() {
   return array(
     'E' => 'Charitable or benevolent org',
     'H' => 'Commercial agricultural production',

@@ -19,12 +19,12 @@
  *   An array containing the AvaTax request result
  *   or FALSE if the tax calculation failed.
  */
-function commerce_avalara_create_transaction($order, $transaction_type = 'SalesOrder', $commit = FALSE) {
-  $company_code = commerce_avalara_company_code();
+function commerce_avatax_create_transaction($order, $transaction_type = 'SalesOrder', $commit = FALSE) {
+  $company_code = commerce_avatax_company_code();
 
   // TODO: Fail silently or improve the error message?
-  if (empty($company_code) || !$avalara_object = commerce_avalara_object()) {
-    drupal_set_message(t("The Avalara module is not properly configured, please configure the company code."), 'error');
+  if (empty($company_code) || !$avatax_object = commerce_avatax_object()) {
+    drupal_set_message(t("The Avatax module is not properly configured, please configure the company code."), 'error');
     return FALSE;
   }
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
@@ -37,11 +37,11 @@ function commerce_avalara_create_transaction($order, $transaction_type = 'SalesO
     'date' => format_date(REQUEST_TIME, 'custom', 'c'),
     // TODO: Probably generate a unique code.
     'code' => 'DC-' . $order->order_id,
-    'customerCode' => _commerce_avalara_transaction_get_customer_code($order),
+    'customerCode' => _commerce_avatax_transaction_get_customer_code($order),
     'currencyCode' => $order_wrapper->commerce_order_total->currency_code->value(),
     'addresses' => array(
-      'shipFrom' => _commerce_avalara_transaction_get_ship_from(),
-      'shipTo' => _commerce_avalara_transaction_get_ship_to($order),
+      'shipFrom' => _commerce_avatax_transaction_get_ship_from(),
+      'shipTo' => _commerce_avatax_transaction_get_ship_to($order),
     ),
   );
 
@@ -52,9 +52,9 @@ function commerce_avalara_create_transaction($order, $transaction_type = 'SalesO
   // For non anonymous orders, send the exemption code if it exists.
   if ($order->uid > 0) {
     // Check the Exemptions status.
-    if (variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'exemptions_status', FALSE)) {
-      if (isset($order_wrapper->owner->avalara_tax_exemption_code)) {
-        $exemption_code = $order_wrapper->owner->avalara_tax_exemption_code->value();
+    if (variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'exemptions_status', FALSE)) {
+      if (isset($order_wrapper->owner->{COMMERCE_AVATAX_EXEMPTION_CODE_FIELD})) {
+        $exemption_code = $order_wrapper->owner->{COMMERCE_AVATAX_EXEMPTION_CODE_FIELD}->value();
 
         // If we have an exemption code.
         if (!empty($exemption_code)) {
@@ -65,9 +65,9 @@ function commerce_avalara_create_transaction($order, $transaction_type = 'SalesO
     }
 
     // Check if the user has a VAT ID field.
-    if (variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'add_vat_field', FALSE)) {
-      if (isset($order_wrapper->owner->avalara_vat_id)) {
-        $vat_id = $order_wrapper->owner->avalara_vat_id->value();
+    if (variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'add_vat_field', FALSE)) {
+      if (isset($order_wrapper->owner->{COMMERCE_AVATAX_VAT_ID_FIELD})) {
+        $vat_id = $order_wrapper->owner->{COMMERCE_AVATAX_VAT_ID_FIELD}->value();
         if (!empty($vat_id)) {
           $request_body['businessIdentificationNo'] = $vat_id;
         }
@@ -84,11 +84,11 @@ function commerce_avalara_create_transaction($order, $transaction_type = 'SalesO
     }
   }
 
-  _commerce_avalara_transaction_add_lines($request_body, $order_wrapper->commerce_line_items, $tax_included);
-  drupal_alter('commerce_avalara_create_transaction', $request_body, $order);
+  _commerce_avatax_transaction_add_lines($request_body, $order_wrapper->commerce_line_items, $tax_included);
+  drupal_alter('commerce_avatax_create_transaction', $request_body, $order);
 
   // Create the transaction.
-  $request = $avalara_object->transactionsCreate(array($request_body));
+  $request = $avatax_object->transactionsCreate(array($request_body));
 
   return $request;
 }
@@ -104,7 +104,7 @@ function commerce_avalara_create_transaction($order, $transaction_type = 'SalesO
  *   Boolean indicating whether or not the tax is included.
  * @param
  */
-function _commerce_avalara_transaction_add_lines(&$request_body, $line_items, $tax_included = FALSE) {
+function _commerce_avatax_transaction_add_lines(&$request_body, $line_items, $tax_included = FALSE) {
   $lines = array();
   $tax_included = $tax_included ? 'true' : 'false';
 
@@ -120,9 +120,9 @@ function _commerce_avalara_transaction_add_lines(&$request_body, $line_items, $t
       $tax_code = '';
 
       // Get the tax code from the "Tax code" term referenced by the product.
-      if (isset($line_item_wrapper->commerce_product->avalara_tax_code)) {
-        if ($line_item_wrapper->commerce_product->avalara_tax_code->value()) {
-          $tax_code = $line_item_wrapper->commerce_product->avalara_tax_code->name->value();
+      if (isset($line_item_wrapper->commerce_product->commerce_avatax_code)) {
+        if ($line_item_wrapper->commerce_product->commerce_avatax_code->value()) {
+          $tax_code = $line_item_wrapper->commerce_product->commerce_avatax_code->name->value();
         }
       }
 
@@ -147,7 +147,7 @@ function _commerce_avalara_transaction_add_lines(&$request_body, $line_items, $t
         'itemCode' => 'Shipping',
         'description' => 'Shipping',
         // Retrieve the configured Shipping tax code.
-        'taxCode' => variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'shipcode', 'FR020100'),
+        'taxCode' => variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'shipcode', 'FR020100'),
         'quantity' => $line_item->quantity,
         'amount' => $line_item_wrapper->commerce_total->amount_decimal->value(),
         'discounted' => 'false',
@@ -179,7 +179,7 @@ function _commerce_avalara_transaction_add_lines(&$request_body, $line_items, $t
 /**
  * Helper function used to determine the customerCode sent.
  */
-function _commerce_avalara_transaction_get_customer_code($order) {
+function _commerce_avatax_transaction_get_customer_code($order) {
   $customer_code = '';
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
 
@@ -190,7 +190,7 @@ function _commerce_avalara_transaction_get_customer_code($order) {
     }
     else {
       $user_email = $order->mail;
-      $customer_code = commerce_avalara_email_to_username($user_email);
+      $customer_code = commerce_avatax_email_to_username($user_email);
     }
   }
   else {
@@ -204,24 +204,24 @@ function _commerce_avalara_transaction_get_customer_code($order) {
 /**
  * Returns the shipFrom address for a transaction.
  */
-function _commerce_avalara_transaction_get_ship_from() {
+function _commerce_avatax_transaction_get_ship_from() {
   return array(
-    'line1' => variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'primary_street1', ''),
-    'line2' => variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'primary_street2', ''),
-    'city' => variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'primary_city', ''),
-    'region' => variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'primary_state', ''),
-    'country' => variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'primary_country', ''),
-    'postalCode' => variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'primary_zip', ''),
+    'line1' => variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'primary_street1', ''),
+    'line2' => variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'primary_street2', ''),
+    'city' => variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'primary_city', ''),
+    'region' => variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'primary_state', ''),
+    'country' => variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'primary_country', ''),
+    'postalCode' => variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'primary_zip', ''),
   );
 }
 
 /**
  * Returns the shipTo address for a transaction.
  */
-function _commerce_avalara_transaction_get_ship_to($order) {
+function _commerce_avatax_transaction_get_ship_to($order) {
   $ship_to = array();
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
-  $customer_profile_to_use = variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'commerce_avalara_tax_address', FALSE);
+  $customer_profile_to_use = variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'tax_address', FALSE);
   // Retrieve the destination customer profile type to use for calculating the
   // Sales Tax.
   if (!$customer_profile_to_use) {

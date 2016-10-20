@@ -1,9 +1,5 @@
-#commerce-avalara-address-validation-wrapper {
+#commerce-avatax-address-validation-wrapper {
   display: none;
-}
-
-.address-validate-btn {
-  display: none !important;
 }
 
 .no-close .ui-dialog-titlebar-close {

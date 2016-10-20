@@ -1,20 +1,20 @@
 <?php
 /**
  * @file
- * Administrative callbacks for the Commerce Avalara module.
+ * Administrative callbacks for the Commerce Avatax module.
  */
 
 /**
- * Builds the Avalara credentials settings form.
+ * Builds the AvaTax credentials settings form.
  */
-function commerce_avalara_credentials_settings_form($form, &$form_state) {
-  form_load_include($form_state, 'inc', 'commerce_avalara', 'includes/commerce_avalara.admin');
-  $var_prefix = COMMERCE_AVALARA_VAR_PREFIX;
+function commerce_avatax_credentials_settings_form($form, &$form_state) {
+  form_load_include($form_state, 'inc', 'commerce_avatax', 'includes/commerce_avatax.admin');
+  $var_prefix = COMMERCE_AVATAX_VAR_PREFIX;
   $modes = array(
-    COMMERCE_AVALARA_DEVELOPMENT_MODE => t('Development'),
-    COMMERCE_AVALARA_PRODUCTION_MODE => t('Production'),
+    COMMERCE_AVATAX_DEVELOPMENT_MODE => t('Development'),
+    COMMERCE_AVATAX_PRODUCTION_MODE => t('Production'),
   );
-  $api_mode = commerce_avalara_api_mode();
+  $api_mode = commerce_avatax_api_mode();
 
   if (!empty($form_state['values'][$var_prefix . 'api_mode'])) {
     $api_mode = $form_state['values'][$var_prefix . 'api_mode'];
@@ -24,45 +24,44 @@ function commerce_avalara_credentials_settings_form($form, &$form_state) {
     '#title' => t('API Credentials'),
     '#type' => 'fieldset',
     '#attributes' => array(
-      'id' => 'commerce-avalara-credentials-wrapper',
+      'id' => 'commerce-avatax-credentials-wrapper',
     ),
     '#description' => t('Please note that only the account number and the license key are validated.')
   );
 
   $form['credentials'][$var_prefix . 'api_mode'] = array(
     '#title' => t('API Mode'),
-    '#description' => t('Only select Production after completing the GO LIVE process with Avalara'),
+    '#description' => t('Only select Production after completing the GO LIVE process with Avatax'),
     '#type' => 'select',
     '#options' => $modes,
     '#default_value' => $api_mode,
     '#ajax' => array(
-      'callback' => 'commerce_avalara_ajax_mode_credentials',
-      'wrapper' => 'commerce-avalara-credentials-wrapper',
+      'callback' => 'commerce_avatax_ajax_mode_credentials',
+      'wrapper' => 'commerce-avatax-credentials-wrapper',
     ),
   );
 
   // Allow to set different credentials for each mode (dev|prod).
   $fields = array(
-    COMMERCE_AVALARA_COMPANY_CODE_FIELD => array(
+    COMMERCE_AVATAX_COMPANY_CODE_FIELD => array(
       'title' => t('@mode company code', array('@mode' => $modes[$api_mode])),
-      'description' => t('The Avalara company code.'),
+      'description' => t('The Avatax company code.'),
       'required' => FALSE,
     ),
-    COMMERCE_AVALARA_ACCOUNT_NUMBER_FIELD => array(
+    COMMERCE_AVATAX_ACCOUNT_NUMBER_FIELD => array(
       'title' => t('@mode account number', array('@mode' => $modes[$api_mode])),
-      'description' => t('The Avalara account number that is used to authenticate against the API.'),
+      'description' => t('The Avatax account number that is used to authenticate against the API.'),
       'required' => TRUE,
     ),
-    COMMERCE_AVALARA_LICENSE_KEY_FIELD => array(
+    COMMERCE_AVATAX_LICENSE_KEY_FIELD => array(
       'title' => t('@mode license key', array('@mode' => $modes[$api_mode])),
-      'description' => t('The Avalara license key that is used to authenticate against the API.'),
+      'description' => t('The Avatax license key that is used to authenticate against the API.'),
       'required' => TRUE,
     ),
   );
 
   $display_warning = FALSE;
   foreach ($fields as $key => $conf) {
-    $function = 'commerce_avalara_' . $key;
     $variable_name = $var_prefix . $api_mode . '_' . $key;
     $variable_value = variable_get($variable_name, '');
     // Determine if the settings are in the database; if they are not but have
@@ -108,10 +107,10 @@ function commerce_avalara_credentials_settings_form($form, &$form_state) {
   $form['credentials']['validate'] = array(
     '#value' => t('Validate credentials'),
     '#type' => 'submit',
-    '#validate' => array('commerce_avalara_credentials_settings_validate'),
+    '#validate' => array('commerce_avatax_credentials_settings_validate'),
     '#ajax' => array(
-      'callback' => 'commerce_avalara_ajax_mode_credentials',
-      'wrapper' => 'commerce-avalara-credentials-wrapper',
+      'callback' => 'commerce_avatax_ajax_mode_credentials',
+      'wrapper' => 'commerce-avatax-credentials-wrapper',
     ),
   );
 
@@ -122,11 +121,11 @@ function commerce_avalara_credentials_settings_form($form, &$form_state) {
 /**
  * Validate handler for the "Validate credentials" button.
  */
-function commerce_avalara_credentials_settings_validate($form, &$form_state) {
-  $var_prefix = COMMERCE_AVALARA_VAR_PREFIX;
+function commerce_avatax_credentials_settings_validate($form, &$form_state) {
+  $var_prefix = COMMERCE_AVATAX_VAR_PREFIX;
   $api_mode = $form_state['values'][$var_prefix . 'api_mode'];
-  $account_number_field = $var_prefix . $api_mode . '_' . COMMERCE_AVALARA_ACCOUNT_NUMBER_FIELD;
-  $license_key_field = $var_prefix . $api_mode . '_' . COMMERCE_AVALARA_LICENSE_KEY_FIELD;
+  $account_number_field = $var_prefix . $api_mode . '_' . COMMERCE_AVATAX_ACCOUNT_NUMBER_FIELD;
+  $license_key_field = $var_prefix . $api_mode . '_' . COMMERCE_AVATAX_LICENSE_KEY_FIELD;
   $account_number = $form_state['values'][$account_number_field];
   $license_key = $form_state['values'][$license_key_field];
   $valid = FALSE;
@@ -134,8 +133,8 @@ function commerce_avalara_credentials_settings_validate($form, &$form_state) {
   // Validate the credentials provided.
   if (!empty($account_number) && !empty($license_key)) {
     $api_key = base64_encode("$account_number:$license_key");
-    if ($avalara = commerce_avalara_object($api_key, $api_mode)) {
-      $ping_request = $avalara->ping();
+    if ($avatax = commerce_avatax_object($api_key, $api_mode)) {
+      $ping_request = $avatax->ping();
 
       if ($ping_request['success'] && !empty($ping_request['result']['authenticated'])) {
         $valid = TRUE;
@@ -156,9 +155,9 @@ function commerce_avalara_credentials_settings_validate($form, &$form_state) {
 }
 
 /**
- * Form validation handler for commerce_avalara_credentials_settings_form().
+ * Form validation handler for commerce_avatax_credentials_settings_form().
  */
-function commerce_avalara_credentials_settings_form_validate($form, &$form_state) {
+function commerce_avatax_credentials_settings_form_validate($form, &$form_state) {
   if (empty($form_state['credentials_validated'])) {
     drupal_set_message(t('Please note that you have to click on the "Validate credentials" button in order to test the connectivity to the API.'), 'warning');
   }
@@ -167,22 +166,22 @@ function commerce_avalara_credentials_settings_form_validate($form, &$form_state
 /**
  * Ajax: Returns container field for credential textfields.
  */
-function commerce_avalara_ajax_mode_credentials($form, $form_state) {
+function commerce_avatax_ajax_mode_credentials($form, $form_state) {
   return $form['credentials'];
 }
 
 /**
- * Builds the Avalara address settings form.
+ * Builds the AvaTax address settings form.
  */
-function commerce_avalara_address_settings_form($form, &$form_state) {
+function commerce_avatax_address_settings_form($form, &$form_state) {
   $form['address'] = array(
     '#title' => t('Address validation'),
     '#type' => 'fieldset',
     '#attributes' => array(
-      'id' => 'commerce-avalara-address-wrapper'
+      'id' => 'commerce-avatax-address-wrapper'
     ),
   );
-  $var_prefix = COMMERCE_AVALARA_VAR_PREFIX;
+  $var_prefix = COMMERCE_AVATAX_VAR_PREFIX;
 
   $form['address'][$var_prefix . 'validate_address'] = array(
     '#type' => 'checkbox',
@@ -230,40 +229,40 @@ function commerce_avalara_address_settings_form($form, &$form_state) {
 }
 
 /**
- * Builds the Avalara general settings form.
+ * Builds the AvaTax general settings form.
  */
-function commerce_avalara_general_settings_form($form, &$form_state) {
+function commerce_avatax_general_settings_form($form, &$form_state) {
   $form['general'] = array(
     '#title' => t('General settings'),
     '#type' => 'fieldset',
   );
-  $form['general'][COMMERCE_AVALARA_VAR_PREFIX . 'product_types'] = array(
+  $form['general'][COMMERCE_AVATAX_VAR_PREFIX . 'product_types'] = array(
     '#title' => t('Product types'),
     '#type' => 'select',
     '#multiple' => TRUE,
     '#options' => commerce_product_type_get_name(),
-    '#default_value' => variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'product_types', array()),
-    '#description' => t('Select the product types for which you want to be able to set tax codes that are sent to Avalara.'),
+    '#default_value' => variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'product_types', array()),
+    '#description' => t('Select the product types for which you want to customize tax codes that are sent to Avatax, otherwise the generic code P0000000 is going to be used.'),
   );
-  $form['general'][COMMERCE_AVALARA_VAR_PREFIX . 'exemptions_status'] = array(
+  $form['general'][COMMERCE_AVATAX_VAR_PREFIX . 'exemptions_status'] = array(
     '#title' => t('Administer Sales Tax Exemptions'),
     '#description' => t('Enter sales tax exemption codes for registered users'),
     '#type' => 'checkbox',
-    '#default_value' => variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'exemptions_status', 0),
+    '#default_value' => variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'exemptions_status', 0),
   );
-  $form['general'][COMMERCE_AVALARA_VAR_PREFIX . 'tax_calculation_enabled'] = array(
+  $form['general'][COMMERCE_AVATAX_VAR_PREFIX . 'tax_calculation_enabled'] = array(
     '#title' => t('Enable tax calculation?'),
     '#type' => 'checkbox',
-    '#default_value' => variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'tax_calculation_enabled', TRUE),
+    '#default_value' => variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'tax_calculation_enabled', TRUE),
   );
-  $form['general'][COMMERCE_AVALARA_VAR_PREFIX . 'enable_logging'] = array(
+  $form['general'][COMMERCE_AVATAX_VAR_PREFIX . 'enable_logging'] = array(
     '#title' => t('Enable logging'),
     '#type' => 'checkbox',
     '#description' => t('Enables detailed AvaTax transaction logging.'),
-    '#default_value' => variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'enable_logging', FALSE),
+    '#default_value' => variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'enable_logging', FALSE),
   );
   $form = system_settings_form($form);
-  $form['#submit'][] = 'commerce_avalara_general_settings_form_submit';
+  $form['#submit'][] = 'commerce_avatax_general_settings_form_submit';
 
   return $form;
 }
@@ -271,17 +270,16 @@ function commerce_avalara_general_settings_form($form, &$form_state) {
 /**
  * Call the field refresh function.
  */
-function commerce_avalara_general_settings_form_submit($form, &$form_state) {
-  module_load_install('commerce_avalara');
-  commerce_avalara_install_helper();
+function commerce_avatax_general_settings_form_submit($form, &$form_state) {
+  commerce_avatax_flush_caches();
 }
 
 /**
- * Builds the Avalara Shipping settings form.
+ * Builds the AvaTax Shipping settings form.
  */
-function commerce_avalara_shipping_settings_form($form, &$form_state) {
+function commerce_avatax_shipping_settings_form($form, &$form_state) {
   include_once DRUPAL_ROOT . '/includes/locale.inc';
-  $var_prefix = COMMERCE_AVALARA_VAR_PREFIX;
+  $var_prefix = COMMERCE_AVATAX_VAR_PREFIX;
   $form['shipping'] = array(
     '#title' => t('Shipping settings'),
     '#type' => 'fieldset',
@@ -460,7 +458,7 @@ function commerce_avalara_shipping_settings_form($form, &$form_state) {
  *
  * @see confirm_form()
  */
-function commerce_avalara_order_admin_calculate_tax_form($form, &$form_state, $order) {
+function commerce_avatax_order_admin_calculate_tax_form($form, &$form_state, $order) {
   $form['order_id'] = array(
     '#type' => 'value',
     '#value' => $order->order_id,
@@ -468,7 +466,7 @@ function commerce_avalara_order_admin_calculate_tax_form($form, &$form_state, $o
 
   // Build a description of what the user may expect to occur on submission.
   $items = array(
-    t('The Avalara Tax Service needs a valid postal address.'),
+    t('The AvaTax Service needs a valid postal address.'),
     t('Please note that a SalesOrder transaction is going to be created, the committed SalesInvoice transaction will be created once the order is paid in full.'),
   );
 
@@ -484,16 +482,16 @@ function commerce_avalara_order_admin_calculate_tax_form($form, &$form_state, $o
 }
 
 /**
- * Form submit callback for commerce_avalara_order_admin_calculate_tax_form().
+ * Form submit callback for commerce_avatax_order_admin_calculate_tax_form().
  */
-function commerce_avalara_order_admin_calculate_tax_form_submit($form, &$form_state) {
+function commerce_avatax_order_admin_calculate_tax_form_submit($form, &$form_state) {
   if ($order = commerce_order_load($form_state['values']['order_id'])) {
-    $request = commerce_avalara_calculate_tax($order);
+    $request = commerce_avatax_calculate_tax($order);
     $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
     $tax_line_item_found = FALSE;
 
     foreach ($order_wrapper->commerce_line_items as $line_item_wrapper) {
-      if ($line_item_wrapper->type->value() == 'avalara_tax') {
+      if ($line_item_wrapper->type->value() == 'avatax') {
         $tax_line_item_found = TRUE;
       }
     }
@@ -519,17 +517,17 @@ function commerce_avalara_order_admin_calculate_tax_form_submit($form, &$form_st
 }
 
 /**
- * Builds the Avalara Global VAT settings form.
+ * Builds the AvaTax Global VAT settings form.
  */
-function commerce_avalara_global_vat_settings_form($form, &$form_state) {
-  $form['global-vat'][COMMERCE_AVALARA_VAR_PREFIX . 'add_vat_field'] = array(
+function commerce_avatax_global_vat_settings_form($form, &$form_state) {
+  $form['global-vat'][COMMERCE_AVATAX_VAR_PREFIX . 'add_vat_field'] = array(
     '#title' => t('Allow customers to supply a VAT ID for tax-exemptions'),
     '#description' => t('Customers will be able to supply a VAT ID that will be submitted as their business identification number.'),
     '#type' => 'checkbox',
-    '#default_value' => variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'add_vat_field', FALSE),
+    '#default_value' => variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'add_vat_field', FALSE),
   );
   $form = system_settings_form($form);
   // This will call the install helper in order to refresh the fields.
-  $form['#submit'][] = 'commerce_avalara_general_settings_form_submit';
+  $form['#submit'][] = 'commerce_avatax_general_settings_form_submit';
   return $form;
 }

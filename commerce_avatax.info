@@ -1,9 +1,9 @@
-name = Commerce Avalara
+name = Commerce Avatax
 description = Drupal Commerce Connector for AvaTax
 package = Commerce (Tax)
 core = 7.x
 
-configure = admin/commerce/config/avalara
+configure = admin/commerce/config/avatax
 
 dependencies[] = commerce
 dependencies[] = commerce_checkout
@@ -12,5 +12,5 @@ dependencies[] = commerce_line_item
 dependencies[] = commerce_product
 dependencies[] = rules
 
-; Identify the Avalara library files.
-files[] = lib/Avalara.php
+; Identify the AvaTax library files.
+files[] = lib/Avatax.php

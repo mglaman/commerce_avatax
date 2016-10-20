@@ -16,8 +16,8 @@
  * @param object $order
  *   The order object.
  *
- * @see commerce_avalara_create_transaction().
+ * @see commerce_avatax_create_transaction().
  */
-function hook_commerce_avalara_create_transaction_alter(&$request_body, $order) {
+function hook_commerce_avatax_create_transaction_alter(&$request_body, $order) {
 
 }

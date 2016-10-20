@@ -3,9 +3,9 @@
 /**
  * Validate the shipping address entered on checkout form.
  */
-function commerce_avalara_validate_address($address) {
+function commerce_avatax_validate_address($address) {
   $parameters = array();
-  $address_mapping = commerce_avalara_address_fields_mapping();
+  $address_mapping = commerce_avatax_address_fields_mapping();
 
   // Prepare the address to be validated.
   foreach ($address as $key => $value) {
@@ -15,9 +15,9 @@ function commerce_avalara_validate_address($address) {
     $parameters[$address_mapping[$key]] = $value;
   }
 
-  $result = commerce_avalara_v1_address_request('address/validate', $parameters);
+  $result = commerce_avatax_v1_address_request('address/validate', $parameters);
   if (empty($result['body'])) {
-    watchdog('commerce_avalara', 'Could not connect to AvaTax for address validation.');
+    watchdog('commerce_avatax', 'Could not connect to AvaTax for address validation.');
     return NULL;
   }
   elseif ($result['body']['ResultCode'] != 'Success') {
@@ -29,7 +29,7 @@ function commerce_avalara_validate_address($address) {
 /**
  * Compare entered address and the address returned by AvaTax.
  */
-function commerce_avalara_address_compare($original, $validated_address) {
+function commerce_avatax_address_compare($original, $validated_address) {
   $result = array(
     'result' => '',
     'msg' => '',
@@ -40,12 +40,12 @@ function commerce_avalara_address_compare($original, $validated_address) {
   if (!$validated_address) {
     $result['result'] = 'invalid';
     $result['msg'] = '<p>' . t('We could not validate the shipping address entered. Please check that you have entered the correct address.') . '</p>';
-    $result['msg'] .= '<p>' . t('Entered address is:') . '</p>' . theme('commerce_avalara_address', array('address' => $original));
+    $result['msg'] .= '<p>' . t('Entered address is:') . '</p>' . theme('commerce_avatax_address', array('address' => $original));
     return $result;
   }
 
   // Map the response back to Addressfield names.
-  $address_mapping = commerce_avalara_address_fields_mapping(TRUE);
+  $address_mapping = commerce_avatax_address_fields_mapping(TRUE);
   $correct_address = array();
   $address_mismatch = FALSE;
 
@@ -72,8 +72,8 @@ function commerce_avalara_address_compare($original, $validated_address) {
   }
 
   // Validate the postal code.
-  $post_code_full_validation = variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'address_postal_code', TRUE);
-  $autocomplete_post_code = variable_get(COMMERCE_AVALARA_VAR_PREFIX . 'autocomplete_postal_code', TRUE);
+  $post_code_full_validation = variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'address_postal_code', TRUE);
+  $autocomplete_post_code = variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'autocomplete_postal_code', TRUE);
   $validated_postal_code = $correct_address['postal_code'];
   $original_postal_code = $original['postal_code'];
   if (!$post_code_full_validation || $autocomplete_post_code) {
@@ -85,7 +85,7 @@ function commerce_avalara_address_compare($original, $validated_address) {
 
   if ($address_mismatch || !$postal_code) {
     $result['result'] = 'needs_correction';
-    $form = drupal_get_form('commerce_avalara_address_suggestion_form', $original, $suggestions);
+    $form = drupal_get_form('commerce_avatax_address_suggestion_form', $original, $suggestions);
     $result['msg'] = drupal_render($form);
     $result['suggestions'] = $suggestions;
   }

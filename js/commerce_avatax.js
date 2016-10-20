@@ -9,13 +9,13 @@
   var continueButtonsSelector = 'input.checkout-continue';
   var suggestionInputSelector = 'input[name="use_suggested_address"]';
   // Make sure our objects are defined.
-  Drupal.CommerceAvalara = Drupal.CommerceAvalara || {};
-  Drupal.CommerceAvalara.Modal = Drupal.CommerceAvalara.Modal || {};
+  Drupal.CommerceAvaTax = Drupal.CommerceAvaTax || {};
+  Drupal.CommerceAvaTax.Modal = Drupal.CommerceAvaTax.Modal || {};
 
   /**
    * AJAX responder command to place HTML within the modal.
    */
-  Drupal.CommerceAvalara.Modal.modal_display = function(ajax, response, status) {
+  Drupal.CommerceAvaTax.Modal.modal_display = function(ajax, response, status) {
     var buttons = [];
 
     if (response.buttons) {
@@ -34,7 +34,7 @@
                   $(continueButtonsSelector).get(1).remove();
                   $(continueButtonsSelector).show();
                 }
-                $(checkoutFormSelector).removeClass('avalara-processed');
+                $(checkoutFormSelector).removeClass('avatax-processed');
                 break;
 
               case 'recommended':
@@ -46,12 +46,12 @@
                     $(suggestionInputSelector).val("1");
                   }
                 }
-                $.fn.commerceAvalaraUnblockCheckout();
+                $.fn.commerceAvaTaxUnblockCheckout();
                 break;
 
               case 'keep_address':
                 $(this).dialog("close");
-                $.fn.commerceAvalaraUnblockCheckout();
+                $.fn.commerceAvaTaxUnblockCheckout();
                 break;
             }
           }
@@ -74,16 +74,16 @@
     $(response.selector).dialog('open');
   }
 
-  Drupal.CommerceAvalara.Modal.modal_dismiss = function(ajax, response, status) {
+  Drupal.CommerceAvaTax.Modal.modal_dismiss = function(ajax, response, status) {
     $(response.selector).dialog.close();
   }
 
-  Drupal.behaviors.commerceAvalara = {
+  Drupal.behaviors.commerceAvaTax = {
     attach: function(context, settings) {
       // Catch the submit, click our custom "Validate address" button.
       $(checkoutFormSelector).submit(function(event) {
-        if (!$(this).hasClass('avalara-processed')) {
-          $('#commerce-avalara-address-validate-btn').trigger('mousedown');
+        if (!$(this).hasClass('avatax-processed')) {
+          $('#commerce-avatax-address-validate-btn').trigger('mousedown');
           event.preventDefault();
           return false;
         }
@@ -92,15 +92,15 @@
   };
 
   $(function() {
-    Drupal.ajax.prototype.commands.address_modal_display = Drupal.CommerceAvalara.Modal.modal_display;
-    Drupal.ajax.prototype.commands.address_modal_dismiss = Drupal.CommerceAvalara.Modal.modal_dismiss;
+    Drupal.ajax.prototype.commands.commerce_avatax_address_modal_display = Drupal.CommerceAvaTax.Modal.modal_display;
+    Drupal.ajax.prototype.commands.commerce_avatax_address_modal_dismiss = Drupal.CommerceAvaTax.Modal.modal_dismiss;
   });
 
   /**
    * Unblock the checkout form submission.
    */
-  $.fn.commerceAvalaraUnblockCheckout = function() {
-    $(checkoutFormSelector).addClass('avalara-processed');
+  $.fn.commerceAvaTaxUnblockCheckout = function() {
+    $(checkoutFormSelector).addClass('avatax-processed');
     $(continueButtonsSelector).click();
   }
 

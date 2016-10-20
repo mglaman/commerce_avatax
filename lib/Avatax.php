@@ -229,7 +229,7 @@ class Avatax {
    */
   public function logMessage($message, $variables = array(), $severity = WATCHDOG_NOTICE) {
     if (is_callable($this->logger)) {
-      call_user_func_array($this->logger, array('commerce_avalara', $message, $variables, $severity));
+      call_user_func_array($this->logger, array('commerce_avatax', $message, $variables, $severity));
     }
   }
 

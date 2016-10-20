@@ -2,13 +2,13 @@
 
 /**
  * @file
- * Default Rules for commerce_avalara.
+ * Default Rules for commerce_avatax.
  */
 
 /**
  * Implements hook_default_rules_configuration().
  */
-function commerce_avalara_default_rules_configuration() {
+function commerce_avatax_default_rules_configuration() {
   $rules = array();
   $cart_statuses = commerce_order_statuses(array('cart' => TRUE));
   $statuses = array();
@@ -24,7 +24,7 @@ function commerce_avalara_default_rules_configuration() {
   }
   $rule = rules_reaction_rule();
   $rule->label = 'Delete AvaTax line items from order';
-  $rule->tags = array('Commerce Avalara');
+  $rule->tags = array('Commerce Avatax');
   $rule->active = TRUE;
   $rule->weight = -1;
   $rule->event('commerce_order_update');
@@ -41,15 +41,15 @@ function commerce_avalara_default_rules_configuration() {
     'op' => '==',
     'value:select' => 'commerce-order:status',
   ))->negate());
-  $rule->action(rules_action('commerce_avalara_delete_sales_tax_line_items', array(
+  $rule->action(rules_action('commerce_avatax_delete_sales_tax_line_items', array(
     'commerce_order:select' => 'commerce-order',
   )));
-  $rules['commerce_avalara_delete_sales_tax_line_items'] = $rule;
+  $rules['commerce_avatax_delete_sales_tax_line_items'] = $rule;
 
   $rule = rules_reaction_rule();
   $rule->label = 'Calculate Sales Tax using AvaTax';
   $rule->active = TRUE;
-  $rule->tags = array('Commerce Avalara');
+  $rule->tags = array('Commerce Avatax');
   $rule->event('commerce_order_presave');
   $rule->condition(rules_condition('data_is_empty', array(
     'data:select' => 'commerce-order-unchanged',
@@ -68,10 +68,10 @@ function commerce_avalara_default_rules_configuration() {
       'checkout_review' => 'checkout_review',
     ),
   )));
-  $rule->action(rules_action('commerce_avalara_calculate_tax', array(
+  $rule->action(rules_action('commerce_avatax_calculate_tax', array(
     'commerce_order:select' => 'commerce-order',
   )));
-  $rules['commerce_avalara_calculate_tax'] = $rule;
+  $rules['commerce_avatax_calculate_tax'] = $rule;
 
   return $rules;
 }

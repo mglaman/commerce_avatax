@@ -1,6 +1,6 @@
 INTRODUCTION
 ============
-The Drupal Commerce Connector for Avalara is a Drupal compliant module that
+The Drupal Commerce Connector for Avatax is a Drupal compliant module that
 integrates the Drupal Commerce check-out process with AvaTax from Avalara, Inc.
 and is used for Tax calculations and Tax compliance.
 
@@ -26,14 +26,14 @@ NEW INSTALLATION
 =================
 Installing the module is done as for any custom Drupal Commerce module
 
-a) Unzip & copy the folder "commerce_avalara" to the location shown below,
+a) Unzip & copy the folder "commerce_avatax" to the location shown below,
 or in accordance with your Drupal Commerce configuration.
 
-yoursite/sites/all/modules/commerce_avalara
+yoursite/sites/all/modules/commerce_avatax
 
 
 CONFIGURATION
 =============
-Select Store -> Configuration -> Avalara
+Select Store -> Configuration -> Avatax
 
 Complete the information requested.
