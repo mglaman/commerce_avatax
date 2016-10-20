@@ -43,17 +43,17 @@ function commerce_avatax_credentials_settings_form($form, &$form_state) {
 
   // Allow to set different credentials for each mode (dev|prod).
   $fields = array(
-    COMMERCE_AVATAX_COMPANY_CODE_FIELD => array(
+    COMMERCE_AVATAX_COMPANY_CODE => array(
       'title' => t('@mode company code', array('@mode' => $modes[$api_mode])),
       'description' => t('The Avatax company code.'),
       'required' => FALSE,
     ),
-    COMMERCE_AVATAX_ACCOUNT_NUMBER_FIELD => array(
+    COMMERCE_AVATAX_ACCOUNT_NUMBER => array(
       'title' => t('@mode account number', array('@mode' => $modes[$api_mode])),
       'description' => t('The Avatax account number that is used to authenticate against the API.'),
       'required' => TRUE,
     ),
-    COMMERCE_AVATAX_LICENSE_KEY_FIELD => array(
+    COMMERCE_AVATAX_LICENSE_KEY => array(
       'title' => t('@mode license key', array('@mode' => $modes[$api_mode])),
       'description' => t('The Avatax license key that is used to authenticate against the API.'),
       'required' => TRUE,
@@ -124,8 +124,8 @@ function commerce_avatax_credentials_settings_form($form, &$form_state) {
 function commerce_avatax_credentials_settings_validate($form, &$form_state) {
   $var_prefix = COMMERCE_AVATAX_VAR_PREFIX;
   $api_mode = $form_state['values'][$var_prefix . 'api_mode'];
-  $account_number_field = $var_prefix . $api_mode . '_' . COMMERCE_AVATAX_ACCOUNT_NUMBER_FIELD;
-  $license_key_field = $var_prefix . $api_mode . '_' . COMMERCE_AVATAX_LICENSE_KEY_FIELD;
+  $account_number_field = $var_prefix . $api_mode . '_' . COMMERCE_AVATAX_ACCOUNT_NUMBER;
+  $license_key_field = $var_prefix . $api_mode . '_' . COMMERCE_AVATAX_LICENSE_KEY;
   $account_number = $form_state['values'][$account_number_field];
   $license_key = $form_state['values'][$license_key_field];
   $valid = FALSE;

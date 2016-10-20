@@ -9,9 +9,9 @@ define('COMMERCE_AVATAX_PRODUCTION_MODE', 'prod');
 define('COMMERCE_AVATAX_DEVELOPMENT_MODE', 'dev');
 define('COMMERCE_AVATAX_VAR_PREFIX', 'commerce_avatax_');
 // Defines constants for the field names.
-define('COMMERCE_AVATAX_ACCOUNT_NUMBER_FIELD', 'account_number');
-define('COMMERCE_AVATAX_LICENSE_KEY_FIELD', 'license_key');
-define('COMMERCE_AVATAX_COMPANY_CODE_FIELD', 'company_code');
+define('COMMERCE_AVATAX_ACCOUNT_NUMBER', 'account_number');
+define('COMMERCE_AVATAX_LICENSE_KEY', 'license_key');
+define('COMMERCE_AVATAX_COMPANY_CODE', 'company_code');
 define('COMMERCE_AVATAX_TAX_CODE_FIELD', 'commerce_avatax_code');
 define('COMMERCE_AVATAX_EXEMPTION_CODE_FIELD', 'commerce_avatax_exemption_code');
 define('COMMERCE_AVATAX_VAT_ID_FIELD', 'commerce_avatax_vat_id');
@@ -152,21 +152,21 @@ function commerce_avatax_api_mode() {
  * Returns the site-wide AvaTax account number.
  */
 function commerce_avatax_account_number() {
-  return variable_get(COMMERCE_AVATAX_VAR_PREFIX . commerce_avatax_api_mode() . '_' . COMMERCE_AVATAX_ACCOUNT_NUMBER_FIELD, '');
+  return variable_get(COMMERCE_AVATAX_VAR_PREFIX . commerce_avatax_api_mode() . '_' . COMMERCE_AVATAX_ACCOUNT_NUMBER, '');
 }
 
 /**
  * Returns the site-wide AvaTax company code for a given API mode.
  */
 function commerce_avatax_company_code() {
-  return variable_get(COMMERCE_AVATAX_VAR_PREFIX . commerce_avatax_api_mode() . '_' . COMMERCE_AVATAX_COMPANY_CODE_FIELD, '');
+  return variable_get(COMMERCE_AVATAX_VAR_PREFIX . commerce_avatax_api_mode() . '_' . COMMERCE_AVATAX_COMPANY_CODE, '');
 }
 
 /**
  * Returns the site-wide AvaTax license key.
  */
 function commerce_avatax_license_key() {
-  return variable_get(COMMERCE_AVATAX_VAR_PREFIX . commerce_avatax_api_mode() . '_' . COMMERCE_AVATAX_LICENSE_KEY_FIELD, '');
+  return variable_get(COMMERCE_AVATAX_VAR_PREFIX . commerce_avatax_api_mode() . '_' . COMMERCE_AVATAX_LICENSE_KEY, '');
 }
 
 /**
