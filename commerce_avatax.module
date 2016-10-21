@@ -527,6 +527,8 @@ function commerce_avatax_commerce_payment_order_paid_in_full($order) {
       $order->data['commerce_avatax'] = array(
         'transaction_id' => $request['result']['id'],
         'transaction_code' => $request['result']['code'],
+        // Stores the company code, it might change overtime.
+        'company_code' => $company_code,
       );
     }
   }
@@ -537,9 +539,8 @@ function commerce_avatax_commerce_payment_order_paid_in_full($order) {
  */
 function commerce_avatax_commit_transaction($order) {
   if (isset($order->data['commerce_avatax']['transaction_code']) && $avatax = commerce_avatax_object()) {
-    $company_code = commerce_avatax_company_code();
-    if (!empty($company_code)) {
-      $avatax->transactionsCommit($company_code, $order->data['commerce_avatax']['transaction_code']);
+    if (!empty($order->data['commerce_avatax']['company_code'])) {
+      $avatax->transactionsCommit($order->data['commerce_avatax']['company_code'], $order->data['commerce_avatax']['transaction_code']);
     }
   }
 }
@@ -558,14 +559,13 @@ function commerce_avatax_commerce_order_delete($order) {
 /**
  * VOID AvaTax transaction for $order.
  */
-function commerce_avatax_void_transaction($order) {
+function commerce_avatax_void_transaction($order, $code = 'DocDeleted') {
   if (isset($order->data['commerce_avatax']['transaction_code']) && $avatax = commerce_avatax_object()) {
-    $company_code = commerce_avatax_company_code();
-    if (!empty($company_code)) {
+    if (!empty($order->data['commerce_avatax']['company_code'])) {
       $parameters = array(
-        'code' => 'Cancelling the order',
+        'code' => $code,
       );
-      $avatax->transactionsVoid($company_code, $order->data['commerce_avatax']['transaction_code'], $parameters);
+      $avatax->transactionsVoid($order->data['commerce_avatax']['company_code'], $order->data['commerce_avatax']['transaction_code'], $parameters);
     }
   }
 }
@@ -1002,4 +1002,18 @@ function commerce_avatax_exemption_codes_allowed_values() {
     'G' => 'Resale',
     'L' => 'Other',
   );
+}
+
+/**
+ * Options list callback for the commerce_avatax_void_transaction() rules
+ * condition.
+ */
+function commerce_avatax_void_codes_list() {
+  return drupal_map_assoc(array(
+    'Unspecified',
+    'PostFailed',
+    'DocDeleted',
+    'DocVoided',
+    'AdjustmentCancelled',
+  ));
 }

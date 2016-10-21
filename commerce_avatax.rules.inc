@@ -26,6 +26,25 @@ function commerce_avatax_rules_action_info() {
       'group' => t('Commerce Avatax'),
       'parameter' => $parameter,
     ),
+    'commerce_avatax_commit_transaction' => array(
+      'label' => t('Commit a SalesOrder transaction'),
+      'group' => t('Commerce AvaTax'),
+      'parameter' => $parameter,
+    ),
+    'commerce_avatax_void_transaction' => array(
+      'label' => t('Void a transaction in Avatax'),
+      'group' => t('Commerce AvaTax'),
+      'parameter' => $parameter + array(
+        'code' => array(
+          'type' => 'token',
+          'label' => t('Void code'),
+          'description' => t('The reason for voiding or cancelling this transaction'),
+          'options list' => 'commerce_avatax_void_codes_list',
+          'optional' => TRUE,
+          'default value' => 'DocDeleted',
+        ),
+      ),
+    ),
   );
 
   return $actions;

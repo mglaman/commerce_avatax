@@ -73,5 +73,25 @@ function commerce_avatax_default_rules_configuration() {
   )));
   $rules['commerce_avatax_calculate_tax'] = $rule;
 
+  $rule = rules_reaction_rule();
+  $rule->label = 'Void AvaTax transaction on order cancellation';
+  $rule->active = TRUE;
+  $rule->event('commerce_order_update');
+  $rule->condition(rules_condition('data_is', array(
+    'data:select' => 'commerce-order:status',
+    'op' => '==',
+    'value:select' => 'commerce-order-unchanged:status',
+  ))->negate());
+  $rule->condition(rules_condition('data_is', array(
+    'data:select' => 'commerce-order:status',
+    'op' => '==',
+    'value' => 'canceled',
+  )));
+  $rule->action(rules_action('commerce_avatax_void_transaction', array(
+    'order:select' => 'commerce-order',
+    'code' => 'DocVoided',
+  )));
+  $rules['commerce_avatax_void_transaction_on_order_cancellation'] = $rule;
+
   return $rules;
 }
