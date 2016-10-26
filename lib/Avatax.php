@@ -41,6 +41,9 @@ class Avatax {
   // Manage a single cURL handle used to submit API requests.
   protected $ch;
 
+  // Stores the HTTP headers.
+  protected $headers;
+
   /**
    * Initializes the API credential properties and cURL handle.
    * @param string $apiKey
@@ -50,13 +53,20 @@ class Avatax {
    * @param string $logger
    *   A callable used to log API request / response messages. Leave empty if
    *   logging is not needed.
+   * @param array $headers
+   *   Allow specifying additional HTTP headers that are going to be sent.
    */
-  public function __construct($apiKey, $apiMode = 'dev', $logger = NULL) {
+  public function __construct($apiKey, $apiMode = 'dev', $logger = NULL, $headers = array()) {
     // Initialize the API credential properties.
     $this->apiKey = $apiKey;
     $this->apiMode = $apiMode;
     $this->logger = $logger;
     $this->setBaseUrl();
+    $this->headers = array_merge($headers, array(
+      'Authorization: Basic ' . $apiKey,
+      'Content-Type: application/json',
+      'x-Avalara-UID: a0o33000003waOC',
+    ));
 
     // Initialize the cURL handle.
     $this->ch = curl_init();
@@ -72,6 +82,16 @@ class Avatax {
    */
   public function baseUrl() {
     return $this->baseUrl;
+  }
+
+  /**
+   * Returns the HTTP headers.
+   *
+   * @return array
+   *   The HTTP headers used when submitting API requests.
+   */
+  public function httpHeaders() {
+    return $this->headers;
   }
 
   /**
@@ -194,10 +214,7 @@ class Avatax {
    */
   public function setDefaultCurlOptions() {
     curl_setopt($this->ch, CURLOPT_HEADER, FALSE);
-    curl_setopt($this->ch, CURLOPT_HTTPHEADER, array(
-      'Authorization: Basic ' . $this->getApiKey(),
-      'Content-Type: application/json',
-    ));
+    curl_setopt($this->ch, CURLOPT_HTTPHEADER, $this->httpHeaders());
     curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, TRUE);
     curl_setopt($this->ch, CURLOPT_SSL_VERIFYPEER, TRUE);
     curl_setopt($this->ch, CURLOPT_VERBOSE, FALSE);

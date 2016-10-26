@@ -205,7 +205,15 @@ function commerce_avatax_object($api_key = '', $api_mode = '') {
       $logger = 'watchdog';
     }
 
-    $avatax[$api_key] = new Avatax($api_key, $api_mode, $logger);
+    // Specify the x-Avalara-Client header.
+    $server_machine_name = gethostname();
+    $module_info = system_get_info('module', 'commerce_avatax');
+    $version = !empty($module_info['version']) ? $module_info['version'] : '5.x';
+    $headers = array(
+      "x-Avalara-Client: Drupal Commerce; Version [$version]; REST; V2; [$server_machine_name]",
+    );
+
+    $avatax[$api_key] = new Avatax($api_key, $api_mode, $logger, $headers);
   }
 
   return $avatax[$api_key];
