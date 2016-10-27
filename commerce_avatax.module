@@ -283,18 +283,19 @@ function commerce_avatax_field_widget_form_alter(&$element, &$form_state, $conte
 }
 
 /**
- * Creates a new Sales tax line item populated with the proper values.
+ * Creates a new AvaTax line item populated with the proper values.
  *
  * @param array $tax_price
  *   A price array used to initialize the value of the line item's unit price.
+ * @param string $tax_type
+ *   A string determining the price component to add.
  * @param int $order_id
  *   The ID of the order the line item belongs to.
  * @param array $data
  *   An array value to initialize the line item's data array with.
  *
  * @return
- *   The shipping line item for the specified service initialized to the given
- *   unit price.
+ *   The AvaTax line item initialized to the given unit price.
  */
 function commerce_avatax_line_item_new($tax_price, $tax_type = 'sales_tax', $order_id = 0, $data = array()) {
   $types_mapping = array(
@@ -336,8 +337,7 @@ function commerce_avatax_line_item_new($tax_price, $tax_type = 'sales_tax', $ord
     'data' => array(),
   );
 
-  $line_item_wrapper->commerce_unit_price->data = commerce_price_component_add($base_price, 'base_price', $base_price, TRUE);
-  $line_item_wrapper->commerce_unit_price->data = commerce_price_component_add($line_item_wrapper->commerce_unit_price->value(), $price_component, $tax_price, FALSE);
+  $line_item_wrapper->commerce_unit_price->data = commerce_price_component_add($base_price, $price_component, $tax_price, TRUE);
 
   // Return the line item.
   return $line_item;
