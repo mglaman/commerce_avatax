@@ -21,7 +21,7 @@ function commerce_avatax_rules_action_info() {
       'group' => t('Commerce Avatax'),
       'parameter' => $parameter,
     ),
-    'commerce_avatax_delete_sales_tax_line_items' => array(
+    'commerce_avatax_delete_tax_line_items' => array(
       'label' => t('Delete Avatax line items'),
       'group' => t('Commerce Avatax'),
       'parameter' => $parameter,

@@ -413,7 +413,7 @@ function commerce_avatax_calculate_tax($order) {
  */
 function commerce_avatax_add_tax_line_item($line_item, $order) {
   // Delete any existing AvaTax line items from the order.
-  commerce_avatax_delete_sales_tax_line_items($order, TRUE);
+  commerce_avatax_delete_tax_line_items($order, TRUE);
 
   // Save the incoming line item now so we get its ID.
   commerce_line_item_save($line_item);
@@ -449,14 +449,14 @@ function commerce_avatax_check_address($order, $field_name) {
 }
 
 /**
- * Deletes AvaTax Sales Tax line items of an order.
+ * Deletes AvaTax line items of an order.
  *
  * @param object $order
  *   The order object to delete the line items from.
  * @param $skip_save
  *   Boolean indicating whether or not to skip saving the order in this function.
  */
-function commerce_avatax_delete_sales_tax_line_items($order, $skip_save = FALSE) {
+function commerce_avatax_delete_tax_line_items($order, $skip_save = FALSE) {
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
 
   // When deleting more than one line item, metadata_wrapper will give problems

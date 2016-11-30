@@ -41,10 +41,10 @@ function commerce_avatax_default_rules_configuration() {
     'op' => '==',
     'value:select' => 'commerce-order:status',
   ))->negate());
-  $rule->action(rules_action('commerce_avatax_delete_sales_tax_line_items', array(
+  $rule->action(rules_action('commerce_avatax_delete_tax_line_items', array(
     'commerce_order:select' => 'commerce-order',
   )));
-  $rules['commerce_avatax_delete_sales_tax_line_items'] = $rule;
+  $rules['commerce_avatax_delete_tax_line_items'] = $rule;
 
   $rule = rules_reaction_rule();
   $rule->label = 'Calculate Sales Tax using AvaTax';
