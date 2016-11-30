@@ -22,7 +22,6 @@
 function commerce_avatax_create_transaction($order, $transaction_type = 'SalesOrder', $commit = FALSE) {
   $company_code = commerce_avatax_company_code();
 
-  // TODO: Fail silently or improve the error message?
   if (empty($company_code) || !$avatax_object = commerce_avatax_object()) {
     drupal_set_message(t("The Avatax module is not properly configured, please configure the company code."), 'error');
     return FALSE;
@@ -31,11 +30,9 @@ function commerce_avatax_create_transaction($order, $transaction_type = 'SalesOr
 
   // Prepare the Request Body.
   $request_body = array(
-    // TODO: Investigate why the SalesOrder request fails.
     'type' => $transaction_type,
     'companyCode' => $company_code,
     'date' => format_date(REQUEST_TIME, 'custom', 'c'),
-    // TODO: Probably generate a unique code.
     'code' => 'DC-' . $order->order_id,
     'customerCode' => _commerce_avatax_transaction_get_customer_code($order),
     'currencyCode' => $order_wrapper->commerce_order_total->currency_code->value(),

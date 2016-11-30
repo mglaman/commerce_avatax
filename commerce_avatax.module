@@ -557,8 +557,6 @@ function commerce_avatax_commit_transaction($order) {
  * Implements hook_commerce_order_delete().
  *
  * Void an Avatax transaction when an order is being deleted.
- * TODO: Probably create a queueItem in case multiple orders are deleted at
- * once?
  */
 function commerce_avatax_commerce_order_delete($order) {
   commerce_avatax_void_transaction($order);
