@@ -244,7 +244,7 @@ function commerce_avatax_commerce_price_component_type_info() {
   // Define a generic AvaTax price component type.
   $components['avatax_sales_tax'] = array(
     'title' => t('AvaTax sales tax'),
-    'display_title' => variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'price_component_title', t('Sales tax')),
+    'display_title' => t('Sales tax'),
     'weight' => 25,
   );
 
@@ -262,10 +262,7 @@ function commerce_avatax_commerce_price_component_type_info() {
  * Returns the title of an AvaTax line item.
  */
 function commerce_avatax_line_item_title($line_item) {
-  if (!empty($line_item->data['commerce_avatax']['display_title'])) {
-    return $line_item->data['commerce_avatax']['display_title'];
-  }
-  return t('Tax');
+  return !empty($line_item->line_item_label) ? $line_item->line_item_label : t('Tax');
 }
 
 /**
@@ -308,13 +305,17 @@ function commerce_avatax_line_item_new($tax_price, $tax_type = 'sales_tax', $ord
       'price_component' => 'avatax_vat',
     ),
   );
-  // Defaults to Sales Tax.
-  $line_item_label = t('Sales Tax');
-  $price_component = $types_mapping['sales_tax']['price_component'];
+
   if (isset($types_mapping[$tax_type])) {
     $line_item_label = $types_mapping[$tax_type]['line_item_label'];
     $price_component = $types_mapping[$tax_type]['price_component'];
   }
+  else {
+    // Defaults to Sales Tax.
+    $line_item_label = t('Sales Tax');
+    $price_component = $types_mapping['sales_tax']['price_component'];
+  }
+
   // Create the new line item.
   $line_item = entity_create('commerce_line_item', array(
     'type' => 'avatax',
@@ -837,7 +838,7 @@ function commerce_avatax_address_suggestion_form($form, &$form_state, $original_
       '#markup' => '<p>' . t('Your shipping address is different from the post office records. We suggest you accept one of the recommended addresses to avoid shipping delays.') . '</p>',
     );
   }
-  $form['orignal_addr'] = array(
+  $form['original_address'] = array(
     '#type' => 'markup',
     '#markup' => '<p>' . t('Entered address is:') . '</p>' . theme('commerce_avatax_address', array('address' => $original_address)),
   );
@@ -912,6 +913,7 @@ function theme_commerce_avatax_address($variables) {
 
 /**
  * Sends HTTP GET request to the Rest API v1.
+ * Copied from 4.x.
  *
  * @return array
  *   Returns an associative array containing 'meta' and 'body' elements.
@@ -964,7 +966,7 @@ function commerce_avatax_v1_address_request($endpoint, $parameters) {
   curl_close($curl);
 
   if ($body === FALSE) {
-    watchdog('commerce_avatax', 'AvaTax request failed. message: %msg', array(
+    watchdog('commerce_avatax', 'AvaTax address validation request failed. message: %msg', array(
       '%msg' => curl_error($curl)), WATCHDOG_ERROR);
     return array(
       'body' => '',
