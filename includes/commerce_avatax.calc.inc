@@ -1,8 +1,7 @@
 <?php
-
 /**
  * @file
- * AvaTax GetTax amount.
+ * AvaTax calculation/requests functions.
  */
 
 /**
@@ -16,8 +15,7 @@
  *   Boolean indicating whether or not to commit the transaction.
  *
  * @return array|bool
- *   An array containing the AvaTax request result
- *   or FALSE if the tax calculation failed.
+ *   An array containing the AvaTax request result, FALSE in case of failure.
  */
 function commerce_avatax_create_transaction($order, $transaction_type = 'SalesOrder', $commit = FALSE) {
   $company_code = commerce_avatax_company_code();
@@ -53,9 +51,7 @@ function commerce_avatax_create_transaction($order, $transaction_type = 'SalesOr
       if (isset($order_wrapper->owner->{COMMERCE_AVATAX_EXEMPTION_CODE_FIELD})) {
         $exemption_code = $order_wrapper->owner->{COMMERCE_AVATAX_EXEMPTION_CODE_FIELD}->value();
 
-        // If we have an exemption code.
         if (!empty($exemption_code)) {
-          // TODO: Check if we need to use the exemptionNo instead here.
           $request_body['customerUsageType'] = $exemption_code;
         }
       }
@@ -77,7 +73,7 @@ function commerce_avatax_create_transaction($order, $transaction_type = 'SalesOr
   // is tax inclusive.
   if (isset($request_body['addresses']['shipFrom']['country'])) {
     if (!in_array($request_body['addresses']['shipFrom']['country'], array('CA', 'US'))) {
-      $tax_included = TRUE;
+      $tax_included = variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'vat_inclusive', TRUE);
     }
   }
 
@@ -177,7 +173,6 @@ function _commerce_avatax_transaction_add_lines(&$request_body, $line_items, $ta
  * Helper function used to determine the customerCode sent.
  */
 function _commerce_avatax_transaction_get_customer_code($order) {
-  $customer_code = '';
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
 
   // Get User name or e-mail address.
@@ -191,8 +186,7 @@ function _commerce_avatax_transaction_get_customer_code($order) {
     }
   }
   else {
-    $user_wrapper = $order_wrapper->owner;
-    $customer_code = $user_wrapper->name->value();
+    $customer_code = $order_wrapper->owner->name->value();
   }
 
   return $customer_code;

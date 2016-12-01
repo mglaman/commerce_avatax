@@ -525,10 +525,11 @@ function commerce_avatax_commerce_payment_order_paid_in_full($order) {
     }
   }
 
-  // Commit the transaction.
+  // Commit the transaction when "Disable document committing" is unchecked.
   if ($tax_line_item_found) {
     module_load_include('inc', 'commerce_avatax', 'includes/commerce_avatax.calc');
-    $request = commerce_avatax_create_transaction($order, 'SalesInvoice', TRUE);
+    $commit = !variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'disable_document_committing', FALSE);
+    $request = commerce_avatax_create_transaction($order, 'SalesInvoice', $commit);
 
     // Parse the result request.
     if ($request['success'] && isset($request['result']['id'])) {
@@ -554,12 +555,27 @@ function commerce_avatax_commit_transaction($order) {
 }
 
 /**
+ * Implements hook_commerce_order_update().
+ *
+ * Void an Avatax transaction when an order is cancelled.
+ */
+function commerce_avatax_commerce_order_update($order) {
+  if ($order->status != 'cancelled') {
+    return;
+  }
+  // Check if there was an order status update.
+  if ($order->original->status != $order->status) {
+    commerce_avatax_void_transaction($order, 'DocVoided');
+  }
+}
+
+/**
  * Implements hook_commerce_order_delete().
  *
  * Void an Avatax transaction when an order is being deleted.
  */
 function commerce_avatax_commerce_order_delete($order) {
-  commerce_avatax_void_transaction($order);
+  commerce_avatax_void_transaction($order, 'DocDeleted');
 }
 
 /**
@@ -581,7 +597,7 @@ function commerce_avatax_void_transaction($order, $code = 'DocDeleted') {
  */
 function commerce_avatax_module_implements_alter(&$implementations, $hook) {
   if ($hook == 'form_alter' && isset($implementations['commerce_avatax'])) {
-    // Place this module's implementation of hook_form_alter() is at the
+    // Place this module's implementation of hook_form_alter() at the
     // end of the invocation in order to ensure our custom submit function
     // added to the checkout submit function runs last (once the customer
     // profile is saved).

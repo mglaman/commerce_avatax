@@ -185,7 +185,8 @@ function commerce_avatax_address_settings_form($form, &$form_state) {
 
   $form['address'][$var_prefix . 'validate_address'] = array(
     '#type' => 'checkbox',
-    '#title' => t('Validate shipping address during checkout'),
+    '#title' => t('Validate addresses during checkout'),
+    '#description' => t('If checked, addresses will be validated during checkout.'),
     '#default_value' => variable_get($var_prefix . 'validate_address', TRUE),
   );
   $countries = variable_get($var_prefix . 'address_validate_countries', array('US'));
@@ -221,7 +222,7 @@ function commerce_avatax_address_settings_form($form, &$form_state) {
   $form['address']['options'][$var_prefix . 'autocomplete_postal_code'] = array(
     '#type' => 'checkbox',
     '#title' => t('Auto complete 5 digit postal code to 9 digits'),
-    '#description' => t('Automatically insert the 9 digit postal code provided by AvaTax'),
+    '#description' => t('Automatically insert the 9 digit postal code provided by AvaTax.'),
     '#default_value' => variable_get($var_prefix . 'autocomplete_postal_code', TRUE),
   );
 
@@ -246,12 +247,13 @@ function commerce_avatax_general_settings_form($form, &$form_state) {
   );
   $form['general'][COMMERCE_AVATAX_VAR_PREFIX . 'exemptions_status'] = array(
     '#title' => t('Administer Sales Tax Exemptions'),
-    '#description' => t('Enter sales tax exemption codes for registered users'),
+    '#description' => t('Registered users with the "configure avatax exemptions" will be able to specify a tax exemption code.'),
     '#type' => 'checkbox',
     '#default_value' => variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'exemptions_status', 0),
   );
   $form['general'][COMMERCE_AVATAX_VAR_PREFIX . 'tax_calculation_enabled'] = array(
     '#title' => t('Enable tax calculation?'),
+    '#description' => t('Uncheck this to disable tax calculation.'),
     '#type' => 'checkbox',
     '#default_value' => variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'tax_calculation_enabled', TRUE),
   );
@@ -260,6 +262,11 @@ function commerce_avatax_general_settings_form($form, &$form_state) {
     '#type' => 'checkbox',
     '#description' => t('Enables detailed AvaTax transaction logging.'),
     '#default_value' => variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'enable_logging', FALSE),
+  );
+  $form['general'][COMMERCE_AVATAX_VAR_PREFIX . 'disable_document_committing'] = array(
+    '#title' => t('Disable document committing'),
+    '#type' => 'checkbox',
+    '#default_value' => variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'disable_document_committing', FALSE),
   );
   $form = system_settings_form($form);
   $form['#submit'][] = 'commerce_avatax_general_settings_form_submit';
@@ -351,7 +358,7 @@ function commerce_avatax_shipping_settings_form($form, &$form_state) {
 
   $form['shipping'][$var_prefix . 'primary_country'] = array(
     '#title' => t('Primary Business Country'),
-    '#description' => t('The primary country your business is located in'),
+    '#description' => t('The primary country your business is located in.'),
     '#type' => 'select',
     '#required' => TRUE,
     '#options' => country_get_list(),
@@ -361,7 +368,7 @@ function commerce_avatax_shipping_settings_form($form, &$form_state) {
   // Select the states that will use AvaTax to calculate the sales tax amount.
   $form['shipping'][$var_prefix . 'select_states'] = array(
     '#title' => t('AvaTax States'),
-    '#description' => t('Select States - Leave blank for all states'),
+    '#description' => t('Select States for which to enable Sales tax calculation - Leave blank for all states.'),
     '#type' => 'select',
     '#multiple' => TRUE,
     '#options' => $states,
@@ -376,7 +383,7 @@ function commerce_avatax_shipping_settings_form($form, &$form_state) {
   // Set Shipping Tax code to be used by AvaTax.
   $form['shipping'][$var_prefix . 'shipcode'] = array(
     '#title' => t('Shipping Tax Code'),
-    '#description' => t('The Sales Tax code to be used for Shipping'),
+    '#description' => t('The Sales Tax code to be used for Shipping.'),
     '#type' => 'textfield',
     '#default_value' => variable_get($var_prefix . 'shipcode', 'FR020100'),
   );
@@ -390,7 +397,7 @@ function commerce_avatax_shipping_settings_form($form, &$form_state) {
   // Configure address to use for sales tax.
   $form['shipping'][$var_prefix . 'tax_address'] = array(
     '#title' => t('Destination Address to Use for Sales Tax'),
-    '#description' => t('Select Shipping address if you have installed Drupal Commerce Shipping Module'),
+    '#description' => t('Select Shipping address if you have installed Drupal Commerce Shipping Module.'),
     '#type' => 'select',
     '#options' => $address_options,
     '#default_value' => variable_get($var_prefix . 'tax_address', 'shipping'),
@@ -399,34 +406,34 @@ function commerce_avatax_shipping_settings_form($form, &$form_state) {
   // Set Street, City, State and Zip for Primary Business Office Location.
   $form['shipping'][$var_prefix . 'account_name'] = array(
     '#title' => t('Business or Company Name'),
-    '#description' => t('Registered Name of Company or Business'),
+    '#description' => t('Registered Name of Company or Business.'),
     '#type' => 'textfield',
     '#required' => TRUE,
     '#default_value' => variable_get($var_prefix . 'account_name', ''),
   );
   $form['shipping'][$var_prefix . 'primary_street1'] = array(
     '#title' => t('Primary Business Street 1'),
-    '#description' => t('The Primary Street 1 your business is located in'),
+    '#description' => t('The Primary Street 1 your business is located in.'),
     '#type' => 'textfield',
     '#required' => TRUE,
     '#default_value' => variable_get($var_prefix . 'primary_street1', ''),
   );
   $form['shipping'][$var_prefix . 'primary_street2'] = array(
     '#title' => t('Primary Business Street 2'),
-    '#description' => t('The Primary Street 2 your business is located in'),
+    '#description' => t('The Primary Street 2 your business is located in.'),
     '#type' => 'textfield',
     '#default_value' => variable_get($var_prefix . 'primary_street2', ''),
   );
   $form['shipping'][$var_prefix . 'primary_city'] = array(
     '#title' => t('Primary Business City'),
-    '#description' => t('The Primary City your business is located in'),
+    '#description' => t('The Primary City your business is located in.'),
     '#required' => TRUE,
     '#type' => 'textfield',
     '#default_value' => variable_get($var_prefix . 'primary_city', ''),
   );
   $form['shipping'][$var_prefix . 'primary_state'] = array(
     '#title' => t('Primary Business State'),
-    '#description' => t('The Primary State your business is located in'),
+    '#description' => t('The Primary State your business is located in.'),
     '#type' => 'select',
     '#options' => $states,
     '#default_value' => variable_get($var_prefix . 'primary_state', ''),
@@ -438,7 +445,7 @@ function commerce_avatax_shipping_settings_form($form, &$form_state) {
   );
   $form['shipping'][$var_prefix . 'primary_zip'] = array(
     '#title' => t('Primary Business Zip'),
-    '#description' => t('The Primary Zip Code your business is located in. NB - Must be a Valid 5 digit zip'),
+    '#description' => t('The Primary Zip Code your business is located in. NB - Must be a Valid 5 digit zip.'),
     '#type' => 'textfield',
     '#required' => TRUE,
     '#default_value' => variable_get($var_prefix . 'primary_zip', ''),
@@ -525,6 +532,11 @@ function commerce_avatax_global_vat_settings_form($form, &$form_state) {
     '#description' => t('Customers will be able to supply a VAT ID that will be submitted as their business identification number.'),
     '#type' => 'checkbox',
     '#default_value' => variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'add_vat_field', FALSE),
+  );
+  $form['global-vat'][COMMERCE_AVATAX_VAR_PREFIX . 'vat_inclusive'] = array(
+    '#title' => t('Prices entered are VAT-inclusive.'),
+    '#type' => 'checkbox',
+    '#default_value' => variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'vat_inclusive', TRUE),
   );
   $form = system_settings_form($form);
   // This will call the install helper in order to refresh the fields.
