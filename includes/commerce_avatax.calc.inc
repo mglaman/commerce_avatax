@@ -212,17 +212,10 @@ function _commerce_avatax_transaction_get_ship_from() {
 function _commerce_avatax_transaction_get_ship_to($order) {
   $ship_to = array();
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
-  $customer_profile_to_use = variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'tax_address', FALSE);
-  // Retrieve the destination customer profile type to use for calculating the
-  // Sales Tax.
-  if (!$customer_profile_to_use) {
-    $customer_profile_to_use = module_exists('commerce_shipping') ? 'shipping' : 'billing';
-  }
-
-  $customer_profile_field = 'commerce_customer_' . $customer_profile_to_use;
+  $customer_profile_field = commerce_avatax_get_customer_profile_field();
 
   // Retrieve the address from the configured customer profile type.
-  if (!empty($order->{$customer_profile_field})) {
+  if (!empty($customer_profile_field) && !empty($order->{$customer_profile_field})) {
     if (isset($order_wrapper->{$customer_profile_field}->commerce_customer_address)) {
       $address = $order_wrapper->{$customer_profile_field}->commerce_customer_address->value();
 

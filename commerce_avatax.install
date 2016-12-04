@@ -34,11 +34,46 @@ function commerce_avatax_requirements($phase) {
 
 /**
  * Implements hook_install().
- *
- * Create the Tax codes vocabulary (check if we need to move that when the
- * general settings admin form is submitted.
  */
 function commerce_avatax_install() {
+  commerce_avatax_install_helper();
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function commerce_avatax_uninstall() {
+  drupal_load('module', 'commerce_avatax');
+  // Delete the Avatax codes Taxonomy.
+  if ($vocabulary = taxonomy_vocabulary_machine_name_load('avatax_codes')) {
+    taxonomy_vocabulary_delete($vocabulary->vid);
+  }
+  $fields_to_delete = array(
+    COMMERCE_AVATAX_TAX_CODE_FIELD,
+    COMMERCE_AVATAX_EXEMPTION_CODE_FIELD,
+    COMMERCE_AVATAX_VAT_ID_FIELD,
+  );
+  foreach ($fields_to_delete as $field_name) {
+    // Skip non existing fields.
+    if (!field_info_field($field_name)) {
+      continue;
+    }
+    field_delete_field($field_name);
+  }
+  // Remove all variables defined by Commerce Avatax.
+  db_delete('variable')
+    ->condition('name', COMMERCE_AVATAX_VAR_PREFIX . '%', 'LIKE')
+    ->execute();
+}
+
+/**
+ * Helper function to define and create the required fields & instances.
+ */
+function commerce_avatax_install_helper() {
+  drupal_load('module', 'commerce_avatax');
+  drupal_load('module', 'commerce_product');
+
+  // Configure the Avatax codes Taxonomy vocabulary.
   $t = get_t();
   $vocabulary = taxonomy_vocabulary_machine_name_load('avatax_codes');
 
@@ -57,32 +92,7 @@ function commerce_avatax_install() {
       'vid' => $vocabulary->vid,
     ));
   }
-  commerce_avatax_install_helper();
-}
 
-/**
- * Implements hook_uninstall().
- */
-function commerce_avatax_uninstall() {
-  $fields_to_delete = array(
-    COMMERCE_AVATAX_TAX_CODE_FIELD,
-    COMMERCE_AVATAX_EXEMPTION_CODE_FIELD,
-  );
-  foreach ($fields_to_delete as $field_name) {
-    // Skip non existing fields.
-    if (!field_info_field($field_name)) {
-      continue;
-    }
-    field_delete_field($field_name);
-  }
-}
-
-/**
- * Helper function to define and create the required fields & instances.
- */
-function commerce_avatax_install_helper() {
-  drupal_load('module', 'commerce_avatax');
-  drupal_load('module', 'commerce_product');
   _commerce_avatax_configure_tax_code_field();
   _commerce_avatax_configure_tax_exemption_field();
   _commerce_avatax_configure_vat_id_field();

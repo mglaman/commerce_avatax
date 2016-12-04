@@ -388,18 +388,12 @@ function commerce_avatax_shipping_settings_form($form, &$form_state) {
     '#default_value' => variable_get($var_prefix . 'shipcode', 'FR020100'),
   );
 
-  $address_options = array(
-    'billing' => t('Billing'),
-  );
-  if (module_exists('commerce_shipping')) {
-    $address_options['shipping'] = t('Shipping');
-  }
   // Configure address to use for sales tax.
   $form['shipping'][$var_prefix . 'tax_address'] = array(
-    '#title' => t('Destination Address to Use for Sales Tax'),
-    '#description' => t('Select Shipping address if you have installed Drupal Commerce Shipping Module.'),
+    '#title' => t('Destination Address to use for Sales Tax calculation'),
+    '#description' => t('Select "Shipping information" if Commerce Shipping is installed.'),
     '#type' => 'select',
-    '#options' => $address_options,
+    '#options' => commerce_customer_profile_type_options_list(),
     '#default_value' => variable_get($var_prefix . 'tax_address', 'shipping'),
   );
 

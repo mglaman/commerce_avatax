@@ -82,7 +82,6 @@ function commerce_avatax_menu() {
   $items['admin/commerce/config/avatax/address-validation'] = array(
     'title' => 'Address validation',
     'type' => MENU_LOCAL_TASK,
-    'access callback' => 'commerce_avatax_address_validation_access',
     'access arguments' => array('administer avatax'),
     'page arguments' => array('commerce_avatax_address_settings_form'),
     'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
@@ -132,13 +131,6 @@ function commerce_avatax_order_admin_form_access($order) {
   }
 
   return commerce_order_access('update', $order);
-}
-
-/**
- * Access callback for the address validation tab.
- */
-function commerce_avatax_address_validation_access($permission) {
-  return module_exists('commerce_shipping') && user_access($permission);
 }
 
 /**
@@ -354,20 +346,12 @@ function commerce_avatax_calculate_tax($order) {
   if (!variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'tax_calculation_enabled', TRUE) || empty($company_code)) {
     return;
   }
-  $customer_profile_to_use = variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'tax_address', FALSE);
+  // Get the customer profile to use for tax calculation.
+  $field_name = commerce_avatax_get_customer_profile_field();
 
-  // Retrieve the destination customer profile type to use for calculating the
-  // Sales Tax.
-  if (!$customer_profile_to_use) {
-    $customer_profile_to_use = module_exists('commerce_shipping') ? 'shipping' : 'billing';
-  }
-
-  $pane_id = 'customer_profile_' . $customer_profile_to_use;
-  if ($field_name = variable_get('commerce_' . $pane_id . '_field', '')) {
-    // Checks if the Sales Tax needs to be calculated for this address.
-    if (!commerce_avatax_check_address($order, $field_name)) {
-      return;
-    }
+  // Checks if the Sales Tax needs to be calculated for this address.
+  if (!$field_name || !commerce_avatax_check_address($order, $field_name)) {
+    return;
   }
 
   module_load_include('inc', 'commerce_avatax', 'includes/commerce_avatax.calc');
@@ -746,54 +730,53 @@ function commerce_avatax_checkout_validate($form, &$form_state) {
     return;
   }
   $form_state['commerce_avatax'] = array();
-  $profile_type = variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'tax_address', 'shipping');
+  $field_name = commerce_avatax_get_customer_profile_field();
 
-  // Validate the shipping profile if possible.
-  if ($profile_type === 'shipping') {
-    $profile_type = module_exists('commerce_shipping') ? 'shipping' : 'billing';
+  // Skip the address validation if we couldn't find the field.
+  if (!$field_name || !$field = field_info_field($field_name)) {
+    return;
   }
+  $profile_type = $field['settings']['profile_type'];
 
   $pane_id = 'customer_profile_' . $profile_type;
-  if ($field_name = variable_get('commerce_' . $pane_id . '_field', '')) {
-    // Addressbook 3.x integration
-    // Check if the profile can be found in the $form_state object.
-    if (isset($form_state['pane_' . $pane_id]['profile'])) {
-      $profile_wrapper = entity_metadata_wrapper('commerce_customer_profile', $form_state['pane_' . $pane_id]['profile']);
+  // Addressbook 3.x integration
+  // Check if the profile can be found in the $form_state object.
+  if (isset($form_state['pane_' . $pane_id]['profile'])) {
+    $profile_wrapper = entity_metadata_wrapper('commerce_customer_profile', $form_state['pane_' . $pane_id]['profile']);
+  }
+  else {
+    // The form state order object is stale, we need to reload it.
+    $order = commerce_order_load($form_state['order']->order_id);
+    $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+    $profile_wrapper = $order_wrapper->{$field_name};
+  }
+
+  if (isset($profile_wrapper->commerce_customer_address)) {
+    $address = $profile_wrapper->commerce_customer_address->value();
+    $country = $address['country'];
+    $enabled_countries = variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'address_validate_countries', array('US'));
+
+    if (!is_array($enabled_countries)) {
+      $enabled_countries = array($enabled_countries);
     }
-    else {
-      // The form state order object is stale, we need to reload it.
-      $order = commerce_order_load($form_state['order']->order_id);
-      $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
-      $profile_wrapper = $order_wrapper->{$field_name};
+
+    if (!in_array($country, $enabled_countries)) {
+      return;
     }
+    // Include the address validation functions.
+    module_load_include('inc', 'commerce_avatax', 'includes/commerce_avatax.address');
+    $validated_address = commerce_avatax_validate_address($address);
+    if ($validated_address === NULL) {
+      return;
+    }
+    $result = commerce_avatax_address_compare($address, $validated_address);
 
-    if (isset($profile_wrapper->commerce_customer_address)) {
-      $address = $profile_wrapper->commerce_customer_address->value();
-      $country = $address['country'];
-      $enabled_countries = variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'address_validate_countries', array('US'));
-
-      if (!is_array($enabled_countries)) {
-        $enabled_countries = array($enabled_countries);
-      }
-
-      if (!in_array($country, $enabled_countries)) {
-        return;
-      }
-      // Include the address validation functions.
-      module_load_include('inc', 'commerce_avatax', 'includes/commerce_avatax.address');
-      $validated_address = commerce_avatax_validate_address($address);
-      if ($validated_address === NULL) {
-        return;
-      }
-      $result = commerce_avatax_address_compare($address, $validated_address);
-
-      if ($result['result'] != 'valid') {
-        $form_state['commerce_avatax']['address_validation_failed'] = TRUE;
-        $form_state['commerce_avatax']['address_validation_result'] = $result;
-        // Store the customer profile ID to update.
-        $form_state['commerce_avatax']['customer_profile_to_update'] = $profile_wrapper->getIdentifier();
-        $form_state['rebuild'] = TRUE;
-      }
+    if ($result['result'] != 'valid') {
+      $form_state['commerce_avatax']['address_validation_failed'] = TRUE;
+      $form_state['commerce_avatax']['address_validation_result'] = $result;
+      // Store the customer profile ID to update.
+      $form_state['commerce_avatax']['customer_profile_to_update'] = $profile_wrapper->getIdentifier();
+      $form_state['rebuild'] = TRUE;
     }
   }
 }
@@ -1016,4 +999,24 @@ function commerce_avatax_void_codes_list() {
     'DocVoided',
     'AdjustmentCancelled',
   ));
+}
+
+/**
+ * Returns the configured customer profile field to use.
+ */
+function commerce_avatax_get_customer_profile_field() {
+  $customer_profile_to_use = variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'tax_address', 'shipping');
+  $profile_types = commerce_customer_profile_types();
+
+  // Fallback to the first customer profile type available.
+  if (!isset($profile_types[$customer_profile_to_use])) {
+    $customer_profile_to_use = key($profile_types);
+  }
+
+  $pane_id = 'customer_profile_' . $customer_profile_to_use;
+  if ($field_name = variable_get('commerce_' . $pane_id . '_field', '')) {
+    return $field_name;
+  }
+
+  return FALSE;
 }
