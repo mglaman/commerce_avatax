@@ -556,30 +556,6 @@ function commerce_avatax_commit_transaction($order) {
 }
 
 /**
- * Implements hook_commerce_order_update().
- *
- * Void an Avatax transaction when an order is cancelled.
- */
-function commerce_avatax_commerce_order_update($order) {
-  if ($order->status != 'cancelled') {
-    return;
-  }
-  // Check if there was an order status update.
-  if ($order->original->status != $order->status) {
-    commerce_avatax_void_transaction($order, 'DocVoided');
-  }
-}
-
-/**
- * Implements hook_commerce_order_delete().
- *
- * Void an Avatax transaction when an order is being deleted.
- */
-function commerce_avatax_commerce_order_delete($order) {
-  commerce_avatax_void_transaction($order, 'DocDeleted');
-}
-
-/**
  * VOID AvaTax transaction for $order.
  */
 function commerce_avatax_void_transaction($order, $code = 'DocDeleted') {

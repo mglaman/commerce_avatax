@@ -93,5 +93,15 @@ function commerce_avatax_default_rules_configuration() {
   )));
   $rules['commerce_avatax_void_transaction_on_order_cancellation'] = $rule;
 
+  $rule = rules_reaction_rule();
+  $rule->label = 'Void Avatax transaction on order deletion';
+  $rule->active = TRUE;
+  $rule->event('commerce_order_delete');
+  $rule->action(rules_action('commerce_avatax_void_transaction', array(
+    'order:select' => 'commerce-order',
+    'code' => 'DocDeleted',
+  )));
+  $rules['commerce_avatax_void_transaction_on_order_deletion'] = $rule;
+
   return $rules;
 }
