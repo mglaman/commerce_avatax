@@ -971,19 +971,22 @@ function commerce_avatax_flush_caches() {
  */
 function commerce_avatax_exemption_codes_allowed_values() {
   return array(
-    'E' => 'Charitable or benevolent org',
-    'H' => 'Commercial agricultural production',
-    'J' => 'Direct pay permit',
-    'K' => 'Direct mail',
-    'A' => 'Federal government',
-    'D' => 'Foreign diplomat',
-    'I' => 'Industrial production / manufacturer',
-    'N' => 'Local government',
-    'B' => 'State government',
+    'A' => 'Federal government (United States)',
+    'B' => 'State government (United States)',
     'C' => 'Tribe / Status Indian / Indian Band',
+    'D' => 'Foreign diplomat',
+    'E' => 'Charitable or benevolent org',
     'F' => 'Religious or educational org',
     'G' => 'Resale',
+    'H' => 'Commercial agricultural production',
+    'I' => 'Industrial production / manufacturer',
+    'J' => 'Direct pay permit (United States)',
+    'K' => 'Direct mail (United States)',
     'L' => 'Other',
+    'N' => 'Local government (United States)',
+    'P' => 'Commercial aquaculture (Canada)',
+    'Q' => 'Commercial Fishery (Canada)',
+    'R' => 'Non-resident (Canada)',
   );
 }
 
