@@ -152,7 +152,7 @@ function _commerce_avatax_transaction_add_lines(&$request_body, $line_items, $ta
         'number' => $delta + 1,
         'itemCode' => 'Coupon',
         'description' => 'Coupon Amt',
-        'taxCode' => '0D010000',
+        'taxCode' => 'OD010000',
         'quantity' => $line_item->quantity,
         'amount' => $line_item_wrapper->commerce_total->amount_decimal->value(),
         'discounted' => 'false',
@@ -160,7 +160,16 @@ function _commerce_avatax_transaction_add_lines(&$request_body, $line_items, $ta
     }
     // Add a document level discount if there's a discount applied to the order.
     elseif ($line_item->type === 'commerce_discount') {
-      $request_body['discount'] = $line_item_wrapper->commerce_total->amount_decimal->value() * -1;
+      $lines[] = array(
+        'id' => $line_item->line_item_id,
+        'number' => $delta + 1,
+        'itemCode' => 'Discount',
+        'description' => 'Discount Amt',
+        'taxCode' => 'OD010000',
+        'quantity' => $line_item->quantity,
+        'amount' => $line_item_wrapper->commerce_total->amount_decimal->value(),
+        'discounted' => 'false',
+      );
     }
   }
 
