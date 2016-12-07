@@ -6,6 +6,8 @@ core = 7.x
 configure = admin/commerce/config/avatax
 
 dependencies[] = commerce
+; The cart dependency is required because of the cart refresh hook.
+dependencies[] = commerce_cart
 dependencies[] = commerce_checkout
 dependencies[] = commerce_customer
 dependencies[] = commerce_line_item

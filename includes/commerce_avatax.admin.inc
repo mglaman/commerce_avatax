@@ -487,25 +487,28 @@ function commerce_avatax_order_admin_calculate_tax_form($form, &$form_state, $or
  */
 function commerce_avatax_order_admin_calculate_tax_form_submit($form, &$form_state) {
   if ($order = commerce_order_load($form_state['values']['order_id'])) {
+    commerce_avatax_delete_tax_line_items($order, TRUE);
     $request = commerce_avatax_calculate_tax($order);
+    $response = $request['response'];
     $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
     $tax_line_item_found = FALSE;
 
     foreach ($order_wrapper->commerce_line_items as $line_item_wrapper) {
       if ($line_item_wrapper->type->value() == 'avatax') {
         $tax_line_item_found = TRUE;
+        break;
       }
     }
 
     // Save the order if the tax calculation was performed.
-    if (!empty($request['success']) && $tax_line_item_found) {
+    if (!empty($response['success']) && $tax_line_item_found) {
       commerce_order_save($order);
       drupal_set_message(t('Taxes have been applied and the order updated.'));
     }
     else {
       $error = t('Unknown error');
-      if (!empty($request['error']) && isset($request['error']['message'])) {
-        $error = $request['error']['message'];
+      if (!empty($response['error']) && isset($response['error']['message'])) {
+        $error = $response['error']['message'];
       }
       drupal_set_message(t('The taxes could not be calculated for that order (@error)', array('@error' => $error), 'error'));
     }

@@ -80,10 +80,10 @@ function commerce_avatax_create_transaction($order, $transaction_type = 'SalesOr
   _commerce_avatax_transaction_add_lines($request_body, $order_wrapper->commerce_line_items, $tax_included);
   drupal_alter('commerce_avatax_create_transaction', $request_body, $order);
 
-  // Create the transaction.
-  $request = $avatax_object->transactionsCreate($request_body);
-
-  return $request;
+  return array(
+    'request' => $request_body,
+    'response' => $avatax_object->transactionsCreate($request_body),
+  );
 }
 
 /**

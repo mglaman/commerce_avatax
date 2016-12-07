@@ -384,10 +384,11 @@ function commerce_avatax_calculate_tax($order) {
 
   module_load_include('inc', 'commerce_avatax', 'includes/commerce_avatax.calc');
   $request = commerce_avatax_create_transaction($order, 'SalesOrder');
+  $response = $request['response'];
 
   // Parse the result request.
-  if (!empty($request['success']) && isset($request['result']['totalTax'])) {
-    $result = $request['result'];
+  if (!empty($response['success']) && isset($response['result']['totalTax'])) {
+    $result = $response['result'];
     $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
     $currency_code = $order_wrapper->commerce_order_total->currency_code->value();
     $tax_price = array(
@@ -406,7 +407,7 @@ function commerce_avatax_calculate_tax($order) {
     }
 
     // Create a new Sales tax line item with the calculated rate.
-    $line_item = commerce_avatax_line_item_new($tax_price, $tax_type, $order->order_id);
+    $line_item = commerce_avatax_line_item_new($tax_price, $tax_type, $order->order_id, array('commerce_avatax' => $request));
     commerce_avatax_add_tax_line_item($line_item, $order);
   }
   else {
@@ -529,21 +530,30 @@ function commerce_avatax_commerce_payment_order_paid_in_full($order) {
   }
   // Check if we have an AvaTax tax line item present on this order.
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
-  $tax_line_item_found = FALSE;
+  $tax_line_item = FALSE;
 
   foreach ($order_wrapper->commerce_line_items as $delta => $line_item_wrapper) {
     // If this line item is a Sales tax line item...
     if ($line_item_wrapper->type->value() == 'avatax') {
-      $tax_line_item_found = TRUE;
+      $tax_line_item = $line_item_wrapper->value();
       break;
     }
   }
 
   // Commit the transaction when "Disable document committing" is unchecked.
-  if ($tax_line_item_found) {
+  if ($tax_line_item && !empty($tax_line_item->data['commerce_avatax']['request'])) {
     module_load_include('inc', 'commerce_avatax', 'includes/commerce_avatax.calc');
     $commit = !variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'disable_document_committing', FALSE);
-    $request = commerce_avatax_create_transaction($order, 'SalesInvoice', $commit);
+
+    if (empty($company_code) || !$avatax_object = commerce_avatax_object()) {
+      drupal_set_message(t("The Avatax module is not properly configured, please configure the company code."), 'error');
+      return;
+    }
+    // Reuse the stored AvaTax transaction from the line item's data array.
+    $request_body = $tax_line_item->data['commerce_avatax']['request'];
+    $request_body['type'] = 'SalesInvoice';
+    $request_body['commit'] = $commit;
+    $request = $avatax_object->transactionsCreate($request_body);
 
     // Parse the result request.
     if ($request['success'] && isset($request['result']['id'])) {
