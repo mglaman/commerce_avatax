@@ -52,6 +52,21 @@ function commerce_avatax_field_access($op, $field, $entity_type, $entity, $accou
 }
 
 /**
+ * Implements hook_module_implements_alter().
+ */
+function commerce_avatax_module_implements_alter(&$implementations, $hook) {
+  // Place this module's implementation of hook_form_alter() at the
+  // end of the invocation in order to ensure our custom submit function
+  // added to the checkout submit function runs last (once the customer
+  // profile is saved).
+  if (in_array($hook, array('form_alter', 'commerce_cart_order_refresh')) && isset($implementations['commerce_avatax'])) {
+    $group = $implementations['commerce_avatax'];
+    unset($implementations['commerce_avatax']);
+    $implementations['commerce_avatax'] = $group;
+  }
+}
+
+/**
  * Implements hook_menu().
  */
 function commerce_avatax_menu() {
@@ -337,6 +352,19 @@ function commerce_avatax_line_item_new($tax_price, $tax_type = 'sales_tax', $ord
 }
 
 /**
+ * Implements hook_commerce_cart_order_refresh().
+ *
+ * Calculate taxes on order refresh in order to properly take in account
+ * discounts.
+ */
+function commerce_avatax_commerce_cart_order_refresh($order_wrapper) {
+  $order = $order_wrapper->value();
+  // Delete any existing AvaTax line items from the order.
+  commerce_avatax_delete_tax_line_items($order, TRUE);
+  commerce_avatax_calculate_tax($order);
+}
+
+/**
  * Calculate sales tax for a given order.
  */
 function commerce_avatax_calculate_tax($order) {
@@ -397,17 +425,12 @@ function commerce_avatax_calculate_tax($order) {
  *   The order to add the avatax line item to.
  */
 function commerce_avatax_add_tax_line_item($line_item, $order) {
-  // Delete any existing AvaTax line items from the order.
-  commerce_avatax_delete_tax_line_items($order, TRUE);
-
   // Save the incoming line item now so we get its ID.
   commerce_line_item_save($line_item);
 
   // Add it to the order's line item reference value.
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
   $order_wrapper->commerce_line_items[] = $line_item;
-
-  commerce_order_calculate_total($order);
 }
 
 /**
@@ -415,20 +438,26 @@ function commerce_avatax_add_tax_line_item($line_item, $order) {
  */
 function commerce_avatax_check_address($order, $field_name) {
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
-   if (isset($order_wrapper->{$field_name}) && isset($order_wrapper->{$field_name}->commerce_customer_address)) {
-     $customer_address = $order_wrapper->{$field_name}->commerce_customer_address->value();
 
-     // Don't calculate Sales Tax if the provided address is in the US but the
-     // State is not in Avax states list.
-     if ($customer_address['country'] == 'US') {
-       $avatax_states = variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'select_states', array());
+  // Skip the check if the customer profile field is empty.
+  if (empty($order->{$field_name})) {
+    return FALSE;
+  }
 
-       // Exit if not a valid AvaTax state.
-       if (!empty($avatax_states) && !in_array($customer_address['administrative_area'], $avatax_states)) {
-         return FALSE;
-       }
-     }
-   }
+  if (isset($order_wrapper->{$field_name}) && isset($order_wrapper->{$field_name}->commerce_customer_address)) {
+    $customer_address = $order_wrapper->{$field_name}->commerce_customer_address->value();
+
+    // Don't calculate Sales Tax if the provided address is in the US but the
+    // State is not in Avax states list.
+    if ($customer_address['country'] == 'US') {
+      $avatax_states = variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'select_states', array());
+
+      // Exit if not a valid AvaTax state.
+      if (!empty($avatax_states) && !in_array($customer_address['administrative_area'], $avatax_states)) {
+       return FALSE;
+      }
+    }
+  }
 
   return TRUE;
 }
@@ -550,21 +579,6 @@ function commerce_avatax_void_transaction($order, $code = 'DocDeleted') {
       );
       $avatax->transactionsVoid($order->data['commerce_avatax']['company_code'], $order->data['commerce_avatax']['transaction_code'], $parameters);
     }
-  }
-}
-
-/**
- * Implements hook_module_implements_alter().
- */
-function commerce_avatax_module_implements_alter(&$implementations, $hook) {
-  if ($hook == 'form_alter' && isset($implementations['commerce_avatax'])) {
-    // Place this module's implementation of hook_form_alter() at the
-    // end of the invocation in order to ensure our custom submit function
-    // added to the checkout submit function runs last (once the customer
-    // profile is saved).
-    $group = $implementations['commerce_avatax'];
-    unset($implementations['commerce_avatax']);
-    $implementations['commerce_avatax'] = $group;
   }
 }
 

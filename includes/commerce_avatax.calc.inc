@@ -92,7 +92,7 @@ function commerce_avatax_create_transaction($order, $transaction_type = 'SalesOr
  * @param array $request_body
  *   The request body that needs to be altered.
  * @param array $line_items
- *   The line items that need to be added to the transaction.
+ *   An array of line items wrapper that need to be added to the transaction.
  * @param bool $tax_included
  *   Boolean indicating whether or not the tax is included.
  * @param
@@ -100,13 +100,84 @@ function commerce_avatax_create_transaction($order, $transaction_type = 'SalesOr
 function _commerce_avatax_transaction_add_lines(&$request_body, $line_items, $tax_included = FALSE) {
   $lines = array();
   $tax_included = $tax_included ? 'true' : 'false';
+  $discounted_line_item_types = array();
 
+  // Commerce discount 2.x integration.
+  if (module_exists('commerce_discount')) {
+    $discounts = array();
+    $discount_line_items = array();
+
+    // Search for discounts.
+    foreach ($line_items as $line_item_wrapper) {
+      // Skip non discount line items.
+      if ($line_item_wrapper->type->value() != 'commerce_discount' || !$line_item_wrapper->value()) {
+        continue;
+      }
+      $line_item = $line_item_wrapper->value();
+      $discount_line_items[] = $line_item_wrapper;
+
+      if (isset($line_item->data['discount_name'])) {
+        $discounts[] = $line_item->data['discount_name'];
+      }
+    }
+
+    // We need to load the discounts to see if "% offer types" are applied to
+    // this order.
+    if ($discounts) {
+      // In case we have only have a "% discount offer type", we need to
+      // properly tell AvaTax which line items are discounted.
+      $discount_offer_types = array();
+
+      // Load the discounts to see if we have any "%offer types".
+      if ($discounts = entity_load_multiple_by_name('commerce_discount', $discounts)) {
+        foreach ($discounts as $discount) {
+          if (empty($discount->commerce_discount_offer)) {
+            continue;
+          }
+          $discount_wrapper = entity_metadata_wrapper('commerce_discount', $discount);
+          $offer_type = $discount_wrapper->commerce_discount_offer->type->value();
+          $discount_offer_types[$offer_type] = $offer_type;
+        }
+      }
+
+      // In case of percentage discount, retrieve the line item types the
+      // discount were applied to.
+      if (isset($discount_offer_types['percentage']) && count($discount_offer_types) === 1) {
+        $discounted_line_item_types = variable_get('commerce_discount_line_item_types', array_diff(commerce_product_line_item_types(), array('product_discount')));
+      }
+
+      // Now calculate the actual discount amount.
+      if ($discount_line_items) {
+        $discount_total = commerce_line_items_total($discount_line_items);
+
+        if ($discount_total['amount'] < 0) {
+          $request_body['discount'] = commerce_currency_amount_to_decimal($discount_total['amount'], $discount_total['currency_code']) * -1;
+        }
+      }
+    }
+  }
+
+  // If we found discounts, and we weren't able to specify which
+  // line item types are discounted, assume all are.
+  if (!empty($request_body['discount']) && !$discounted_line_item_types) {
+    $line_item_types = commerce_line_item_types();
+    $discounted_line_item_types = array_keys($line_item_types);
+  }
+  $discounted_line_item_types = array_filter($discounted_line_item_types);
+
+  // Loop over the line items passed.
   foreach ($line_items as $delta => $line_item_wrapper) {
     // Ensure the line item still exists.
     if (!$line_item_wrapper->value()) {
       continue;
     }
     $line_item = $line_item_wrapper->value();
+
+    $discounted = 'false';
+    // Check if this line item type is discounted.
+    if (!empty($request_body['discount']) && in_array($line_item->type, $discounted_line_item_types)) {
+      $discounted = 'true';
+    }
 
     // Handles products.
     if (in_array($line_item->type, commerce_product_line_item_types())) {
@@ -129,7 +200,7 @@ function _commerce_avatax_transaction_add_lines(&$request_body, $line_items, $ta
         'amount' => $line_item_wrapper->commerce_total->amount_decimal->value(),
         // The discounted boolean needs to be set to TRUE, otherwise, discount
         // document level won't be applied.
-        'discounted' => 'true',
+        'discounted' => $discounted,
         'taxIncluded' => $tax_included,
       );
     }
@@ -143,32 +214,7 @@ function _commerce_avatax_transaction_add_lines(&$request_body, $line_items, $ta
         'taxCode' => variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'shipcode', 'FR020100'),
         'quantity' => $line_item->quantity,
         'amount' => $line_item_wrapper->commerce_total->amount_decimal->value(),
-        'discounted' => 'false',
-      );
-    }
-    elseif ($line_item->type === 'commerce_coupon') {
-      $lines[] = array(
-        'id' => $line_item->line_item_id,
-        'number' => $delta + 1,
-        'itemCode' => 'Coupon',
-        'description' => 'Coupon Amt',
-        'taxCode' => 'OD010000',
-        'quantity' => $line_item->quantity,
-        'amount' => $line_item_wrapper->commerce_total->amount_decimal->value(),
-        'discounted' => 'false',
-      );
-    }
-    // Add a document level discount if there's a discount applied to the order.
-    elseif ($line_item->type === 'commerce_discount') {
-      $lines[] = array(
-        'id' => $line_item->line_item_id,
-        'number' => $delta + 1,
-        'itemCode' => 'Discount',
-        'description' => 'Discount Amt',
-        'taxCode' => 'OD010000',
-        'quantity' => $line_item->quantity,
-        'amount' => $line_item_wrapper->commerce_total->amount_decimal->value(),
-        'discounted' => 'false',
+        'discounted' => $discounted,
       );
     }
   }
