@@ -21,10 +21,10 @@
 class Avatax {
 
   // Defines the test API url of the REST API V2.
-  const BASE_DEV_URL_V2 = 'https://rest-sbx-preview.avalara.net/api/v2/';
+  const BASE_DEV_URL_V2 = 'https://sandbox-rest.avatax.com/api/v2/';
 
   // Defines the production API url of the REST API V2.
-  const BASE_URL_V2 = 'https://rest-sbx-preview.avalara.net/api/v2/';
+  const BASE_URL_V2 = 'https://rest.avatax.com/api/v2/';
 
   // Defines the base URL of the API.
   protected $baseUrl;
@@ -285,7 +285,7 @@ class Avatax {
     $this->logMessage('Request info: !url !headers !response !meta', array(
       '!url' => "<pre>URL : $method $url</pre>",
       '!headers' => "<pre>Request Headers:\n" . var_export(curl_getinfo($this->ch, CURLOPT_HTTPHEADER), TRUE) . '</pre>',
-      '!response' => "<pre>Response:\n" . check_plain(var_export($result, TRUE)) . '</pre>',
+      '!response' => "<pre>Response:\n" . var_export($result, TRUE) . '</pre>',
       '!meta' => "<pre>Response Meta:\n" . var_export(curl_getinfo($this->ch), TRUE) . '</pre>',
     ));
 
