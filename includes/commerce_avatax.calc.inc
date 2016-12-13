@@ -214,7 +214,7 @@ function _commerce_avatax_transaction_add_lines(&$request_body, $line_items, $ta
         'taxCode' => variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'shipcode', 'FR020100'),
         'quantity' => $line_item->quantity,
         'amount' => $line_item_wrapper->commerce_total->amount_decimal->value(),
-        'discounted' => $discounted,
+        'discounted' => 'false',
       );
     }
   }
