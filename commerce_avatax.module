@@ -410,9 +410,6 @@ function commerce_avatax_calculate_tax($order) {
     $line_item = commerce_avatax_line_item_new($tax_price, $tax_type, $order->order_id, array('commerce_avatax' => $request));
     commerce_avatax_add_tax_line_item($line_item, $order);
   }
-  else {
-    drupal_set_message(t('Could not calculate the Tax'), 'error');
-  }
 
   return $request;
 }
