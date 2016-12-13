@@ -26,6 +26,11 @@ function commerce_avatax_create_transaction($order, $transaction_type = 'SalesOr
   }
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
 
+  // Return FALSE in case there are no line items.
+  if ($order_wrapper->commerce_line_items->count() === 0) {
+    return FALSE;
+  }
+
   // Prepare the Request Body.
   $request_body = array(
     'type' => $transaction_type,
@@ -214,6 +219,7 @@ function _commerce_avatax_transaction_add_lines(&$request_body, $line_items, $ta
         'taxCode' => variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'shipcode', 'FR020100'),
         'quantity' => $line_item->quantity,
         'amount' => $line_item_wrapper->commerce_total->amount_decimal->value(),
+        // Shipping shouldn't be discounted.
         'discounted' => 'false',
       );
     }

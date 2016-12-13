@@ -358,6 +358,10 @@ function commerce_avatax_line_item_new($tax_price, $tax_type = 'sales_tax', $ord
  * discounts.
  */
 function commerce_avatax_commerce_cart_order_refresh($order_wrapper) {
+  // Skip the request if there are no line items.
+  if ($order_wrapper->commerce_line_items->count() === 0) {
+    return;
+  }
   $order = $order_wrapper->value();
   // Delete any existing AvaTax line items from the order.
   commerce_avatax_delete_tax_line_items($order, TRUE);
@@ -548,7 +552,12 @@ function commerce_avatax_commerce_payment_order_paid_in_full($order) {
     }
     // Reuse the stored AvaTax transaction from the line item's data array.
     $request_body = $tax_line_item->data['commerce_avatax']['request'];
-    $request_body['type'] = 'SalesInvoice';
+
+    // Update the transaction type if it needs to be committed.
+    if ($commit) {
+      $request_body['type'] = 'SalesInvoice';
+    }
+
     $request_body['commit'] = $commit;
     $request = $avatax_object->transactionsCreate($request_body);
 
