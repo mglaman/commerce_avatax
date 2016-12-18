@@ -362,60 +362,113 @@ function commerce_avatax_commerce_cart_order_refresh($order_wrapper) {
   if ($order_wrapper->commerce_line_items->count() === 0) {
     return;
   }
+
   $order = $order_wrapper->value();
-  // Delete any existing AvaTax line items from the order.
-  commerce_avatax_delete_tax_line_items($order, TRUE);
   commerce_avatax_calculate_tax($order);
 }
 
 /**
- * Calculate sales tax for a given order.
+ * Performs Tax calculation for a given order.
+ *
+ * @param object $order
+ *   The order object.
+ *
+ * @return array|bool
+ *   An associative array containing the request & the response, FALSE in case
+ *   the request could not be performed.
  */
 function commerce_avatax_calculate_tax($order) {
-  $company_code = commerce_avatax_company_code();
   // Skip tax calculation if the option is disabled, or if the company code
   // is empty.
-  if (!variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'tax_calculation_enabled', TRUE) || empty($company_code)) {
+  if (!variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'tax_calculation_enabled', TRUE)) {
     return;
   }
+  $company_code = commerce_avatax_company_code();
+
+  // If the company code is not configured, return FALSE.
+  if (empty($company_code) || !$avatax_object = commerce_avatax_object()) {
+    drupal_set_message(t("The Avatax module is not properly configured, please configure the company code."), 'error');
+    return FALSE;
+  }
+
   // Get the customer profile to use for tax calculation.
   $field_name = commerce_avatax_get_customer_profile_field();
 
   // Checks if the Sales Tax needs to be calculated for this address.
   if (!$field_name || !commerce_avatax_check_address($order, $field_name)) {
+    // Delete any existing AvaTax line items from the order.
+    commerce_avatax_delete_tax_line_items($order, TRUE);
+    // Remove the stored request & response from the order's data.
+    $order->data['commerce_avatax'] = array();
     return;
   }
-
   module_load_include('inc', 'commerce_avatax', 'includes/commerce_avatax.calc');
-  $request = commerce_avatax_create_transaction($order, 'SalesOrder');
-  $response = $request['response'];
 
-  // Parse the result request.
-  if (!empty($response['success']) && isset($response['result']['totalTax'])) {
-    $result = $response['result'];
-    $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
-    $currency_code = $order_wrapper->commerce_order_total->currency_code->value();
-    $tax_price = array(
-      'amount' => commerce_currency_decimal_to_amount($result['totalTax'], $currency_code),
-      'currency_code' => $currency_code,
-      'data' => array(),
-    );
-
-    // Assume VAT when the customer's country is not in the US|CA.
-    $tax_type = 'sales_tax';
-    if (isset($order_wrapper->{$field_name})) {
-      $customer_address = $order_wrapper->{$field_name}->commerce_customer_address->value();
-      if (!in_array($customer_address['country'], array('US', 'CA'))) {
-        $tax_type = 'vat';
-      }
-    }
-
-    // Create a new Sales tax line item with the calculated rate.
-    $line_item = commerce_avatax_line_item_new($tax_price, $tax_type, $order->order_id, array('commerce_avatax' => $request));
-    commerce_avatax_add_tax_line_item($line_item, $order);
+  $stored_request = array();
+  // Retrieve the stored request in the order's data array,
+  // compare it with the request that's about to be sent, and skip it if
+  // unnecessary.
+  if (isset($order->data['commerce_avatax']['request'])) {
+    $stored_request = $order->data['commerce_avatax']['request'];
   }
 
-  return $request;
+  // Prepare the request.
+  $request = commerce_avatax_create_transaction($order, 'SalesOrder');
+
+  // In order for the request comparison to work properly,
+  // make sure the "date" is the same in both arrays.
+  if (isset($stored_request['date']) && isset($request['date'])) {
+    $stored_request['date'] = $request['date'];
+  }
+
+  // Perform the request to Avatax, only if necessary.
+  if ($stored_request != $request) {
+    $response = $avatax_object->transactionsCreate($request);
+
+    // Delete the Tax line item if present.
+    commerce_avatax_delete_tax_line_items($order, TRUE);
+
+    if (!empty($response['success']) && isset($response['result']['totalTax'])) {
+      // Store the request & the response in the order's data.
+      $order->data['commerce_avatax'] = array(
+        'request' => $request,
+        'response' => $response,
+      );
+
+      // Parse the result request.
+      $result = $response['result'];
+      $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+      $currency_code = $order_wrapper->commerce_order_total->currency_code->value();
+      $tax_price = array(
+        'amount' => commerce_currency_decimal_to_amount($result['totalTax'], $currency_code),
+        'currency_code' => $currency_code,
+        'data' => array(),
+      );
+
+      // Assume VAT when the customer's country is not in the US|CA.
+      $tax_type = 'sales_tax';
+      if (isset($order_wrapper->{$field_name})) {
+        $customer_address = $order_wrapper->{$field_name}->commerce_customer_address->value();
+        if (!in_array($customer_address['country'], array('US', 'CA'))) {
+          $tax_type = 'vat';
+        }
+      }
+
+      // Create a new Sales tax line item with the calculated rate.
+      $line_item = commerce_avatax_line_item_new($tax_price, $tax_type, $order->order_id);
+      commerce_avatax_add_tax_line_item($line_item, $order);
+    }
+  }
+  else {
+    // Otherwise return the request/response from the order's data array.
+    $request = $order->data['commerce_avatax']['request'];
+    $response = $order->data['commerce_avatax']['response'];
+  }
+
+  return array(
+    'request' => $request,
+    'response' => $response,
+  );
 }
 
 /**
@@ -542,16 +595,17 @@ function commerce_avatax_commerce_payment_order_paid_in_full($order) {
   }
 
   // Commit the transaction when "Disable document committing" is unchecked.
-  if ($tax_line_item && !empty($tax_line_item->data['commerce_avatax']['request'])) {
+  if ($tax_line_item && !empty($order->data['commerce_avatax']['request'])) {
     module_load_include('inc', 'commerce_avatax', 'includes/commerce_avatax.calc');
-    $commit = !variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'disable_document_committing', FALSE);
 
     if (empty($company_code) || !$avatax_object = commerce_avatax_object()) {
       drupal_set_message(t("The Avatax module is not properly configured, please configure the company code."), 'error');
       return;
     }
     // Reuse the stored AvaTax transaction from the line item's data array.
-    $request_body = $tax_line_item->data['commerce_avatax']['request'];
+    $request_body = $order->data['commerce_avatax']['request'];
+    // Check if the transaction needs to be committed.
+    $commit = !variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'disable_document_committing', FALSE);
 
     // Update the transaction type if it needs to be committed.
     if ($commit) {
@@ -559,15 +613,18 @@ function commerce_avatax_commerce_payment_order_paid_in_full($order) {
     }
 
     $request_body['commit'] = $commit;
-    $request = $avatax_object->transactionsCreate($request_body);
+    // Perform a new
+    $response = $avatax_object->transactionsCreate($request_body);
 
     // Parse the result request.
-    if ($request['success'] && isset($request['result']['id'])) {
+    if ($response['success'] && isset($response['result']['id'])) {
       $order->data['commerce_avatax'] = array(
-        'transaction_id' => $request['result']['id'],
-        'transaction_code' => $request['result']['code'],
+        'transaction_id' => $response['result']['id'],
+        'transaction_code' => $response['result']['code'],
         // Stores the company code, it might change overtime.
         'company_code' => $company_code,
+        'request' => $request_body,
+        'response' => $response,
       );
     }
   }

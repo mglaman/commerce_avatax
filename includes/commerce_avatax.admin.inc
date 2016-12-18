@@ -247,7 +247,7 @@ function commerce_avatax_general_settings_form($form, &$form_state) {
   );
   $form['general'][COMMERCE_AVATAX_VAR_PREFIX . 'exemptions_status'] = array(
     '#title' => t('Administer Sales Tax Exemptions'),
-    '#description' => t('Registered users with the "configure avatax exemptions" will be able to specify a tax exemption code.'),
+    '#description' => t('Registered users with the "configure avatax exemptions" permission will be able to specify a tax exemption code.'),
     '#type' => 'checkbox',
     '#default_value' => variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'exemptions_status', 0),
   );

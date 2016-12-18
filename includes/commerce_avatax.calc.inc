@@ -5,7 +5,7 @@
  */
 
 /**
- * Gets the tax amount for the order based on the delivery address.
+ * Prepares the transaction request array to be sent to AvaTax.
  *
  * @param object $order
  *   The order object.
@@ -15,21 +15,16 @@
  *   Boolean indicating whether or not to commit the transaction.
  *
  * @return array|bool
- *   An array containing the AvaTax request result, FALSE in case of failure.
+ *   Returns the request body array to be sent, FALSE in case of failure.
  */
 function commerce_avatax_create_transaction($order, $transaction_type = 'SalesOrder', $commit = FALSE) {
-  $company_code = commerce_avatax_company_code();
-
-  if (empty($company_code) || !$avatax_object = commerce_avatax_object()) {
-    drupal_set_message(t("The Avatax module is not properly configured, please configure the company code."), 'error');
-    return FALSE;
-  }
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
 
   // Return FALSE in case there are no line items.
   if ($order_wrapper->commerce_line_items->count() === 0) {
     return FALSE;
   }
+  $company_code = commerce_avatax_company_code();
 
   // Prepare the Request Body.
   $request_body = array(
@@ -75,7 +70,7 @@ function commerce_avatax_create_transaction($order, $transaction_type = 'SalesOr
 
   $tax_included = FALSE;
   // If the ship from country is not in the US|CA, assume the price entered
-  // is tax inclusive.
+  // is "VAT-inclusive" if specified in the settings.
   if (isset($request_body['addresses']['shipFrom']['country'])) {
     if (!in_array($request_body['addresses']['shipFrom']['country'], array('CA', 'US'))) {
       $tax_included = variable_get(COMMERCE_AVATAX_VAR_PREFIX . 'vat_inclusive', TRUE);
@@ -85,10 +80,7 @@ function commerce_avatax_create_transaction($order, $transaction_type = 'SalesOr
   _commerce_avatax_transaction_add_lines($request_body, $order_wrapper->commerce_line_items, $tax_included);
   drupal_alter('commerce_avatax_create_transaction', $request_body, $order);
 
-  return array(
-    'request' => $request_body,
-    'response' => $avatax_object->transactionsCreate($request_body),
-  );
+  return $request_body;
 }
 
 /**
@@ -100,7 +92,6 @@ function commerce_avatax_create_transaction($order, $transaction_type = 'SalesOr
  *   An array of line items wrapper that need to be added to the transaction.
  * @param bool $tax_included
  *   Boolean indicating whether or not the tax is included.
- * @param
  */
 function _commerce_avatax_transaction_add_lines(&$request_body, $line_items, $tax_included = FALSE) {
   $lines = array();
