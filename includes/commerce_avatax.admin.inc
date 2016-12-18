@@ -487,12 +487,16 @@ function commerce_avatax_order_admin_calculate_tax_form($form, &$form_state, $or
  */
 function commerce_avatax_order_admin_calculate_tax_form_submit($form, &$form_state) {
   if ($order = commerce_order_load($form_state['values']['order_id'])) {
-    commerce_avatax_delete_tax_line_items($order, TRUE);
-    $request = commerce_avatax_calculate_tax($order);
-    $response = $request['response'];
+    // Check if the request didn't fail.
+    if ((!$request = commerce_avatax_calculate_tax($order)) || empty($request['response'])) {
+      drupal_set_message(t('The taxes could not be calculated for this order.'), 'error');
+      $form_state['redirect'] = 'admin/commerce/orders/' . $order->order_id . '/edit';
+      return;
+    }
     $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
     $tax_line_item_found = FALSE;
 
+    // Look for an AvaTax line item.
     foreach ($order_wrapper->commerce_line_items as $line_item_wrapper) {
       if ($line_item_wrapper->type->value() == 'avatax') {
         $tax_line_item_found = TRUE;
@@ -500,6 +504,7 @@ function commerce_avatax_order_admin_calculate_tax_form_submit($form, &$form_sta
       }
     }
 
+    $response = $request['response'];
     // Save the order if the tax calculation was performed.
     if (!empty($response['success']) && $tax_line_item_found) {
       commerce_order_save($order);
@@ -507,10 +512,11 @@ function commerce_avatax_order_admin_calculate_tax_form_submit($form, &$form_sta
     }
     else {
       $error = t('Unknown error');
+      // Display a detailed error message if available.
       if (!empty($response['error']) && isset($response['error']['message'])) {
         $error = $response['error']['message'];
       }
-      drupal_set_message(t('The taxes could not be calculated for that order (@error)', array('@error' => $error), 'error'));
+      drupal_set_message(t('The taxes could not be calculated for this order (@error)', array('@error' => $error)), 'error');
     }
     $form_state['redirect'] = 'admin/commerce/orders/' . $order->order_id . '/edit';
   }

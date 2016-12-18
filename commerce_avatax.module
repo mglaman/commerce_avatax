@@ -400,7 +400,7 @@ function commerce_avatax_calculate_tax($order) {
     commerce_avatax_delete_tax_line_items($order, TRUE);
     // Remove the stored request & response from the order's data.
     $order->data['commerce_avatax'] = array();
-    return;
+    return FALSE;
   }
   module_load_include('inc', 'commerce_avatax', 'includes/commerce_avatax.calc');
 
@@ -423,10 +423,18 @@ function commerce_avatax_calculate_tax($order) {
 
   // Perform the request to Avatax, only if necessary.
   if ($stored_request != $request) {
-    $response = $avatax_object->transactionsCreate($request);
-
+    // Remove the AvaTax data from the order.
+    $order->data['commerce_avatax'] = array();
     // Delete the Tax line item if present.
     commerce_avatax_delete_tax_line_items($order, TRUE);
+
+    // Only perform the request the request array contains a "lines" key.
+    if (!empty($request['lines'])) {
+      $response = $avatax_object->transactionsCreate($request);
+    }
+    else {
+      return FALSE;
+    }
 
     if (!empty($response['success']) && isset($response['result']['totalTax'])) {
       // Store the request & the response in the order's data.
