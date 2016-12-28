@@ -1,0 +1,7 @@
+commerce_avatax.config_settings:
+  path: '/admin/commerce/config/avatax'
+  defaults:
+    _form: 'Drupal\commerce_avatax\Form\ConfigSettingsForm'
+    _title: 'Commerce AvaTax settings'
+  requirements:
+    _permission: 'access commerce administration pages'
