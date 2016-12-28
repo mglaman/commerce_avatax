@@ -1,0 +1,17 @@
+{
+  "name": "drupal/commerce_avatax",
+  "type": "drupal-module",
+  "description": "Provides integration between Drupal Commerce and Avalara AvaTax.",
+  "keywords": ["Drupal", "Commerce", "Avalara", "AvaTax"],
+  "license": "GPL-2.0+",
+  "homepage": "https://www.drupal.org/project/commerce_avatax",
+  "minimum-stability": "dev",
+  "support": {
+    "issues": "http://drupal.org/project/issues/commerce_avatax",
+    "source": "http://cgit.drupalcode.org/commerce_avatax"
+  },
+  "require": {
+    "drupal/commerce": "~2.0"
+  }
+}
+
