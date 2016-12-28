@@ -1,0 +1,18 @@
+services:
+  commerce_avatax.order_process.taxes:
+    class: Drupal\commerce_avatax\OrderProcessor\Avatax
+    arguments: ['@config.factory', '@http_client_factory', '@date.formatter', '@commerce_avatax.chain_tax_code_resolver', '@module_handler', '@logger.factory']
+    tags:
+      - { name: commerce_order.order_processor, priority: -500 }
+  commerce_avatax.chain_tax_code_resolver:
+    class: Drupal\commerce_avatax\Resolver\ChainTaxCodeResolver
+    tags:
+      - { name: service_collector, call: addResolver, tag: commerce_avatax.tax_code_resolver }
+  commerce_avatax.default_tax_code_resolver:
+    class: Drupal\commerce_avatax\Resolver\DefaultTaxCodeResolver
+    tags:
+      - { name: commerce_avatax.tax_code_resolver, priority: -100 }
+  commerce_avatax.product_variation_tax_code_resolver:
+    class: Drupal\commerce_avatax\Resolver\ProductVariationTaxCodeResolver
+    tags:
+      - { name: commerce_avatax.tax_code_resolver, priority: 100 }
