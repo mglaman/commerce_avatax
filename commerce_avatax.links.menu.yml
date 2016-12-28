@@ -1,0 +1,5 @@
+commerce_avatax.config_settings:
+  title: 'AvaTax settings'
+  route_name: 'commerce_avatax.config_settings'
+  parent: 'commerce.configuration'
+  description: 'Configure settings for Commerce AvaTax.'
