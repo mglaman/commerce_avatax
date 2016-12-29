@@ -32,7 +32,7 @@ class Avatax implements OrderProcessorInterface {
     $this->config = $config_factory->get('commerce_avatax.settings');
     $this->client = $client_factory->fromOptions([
       'headers' => [
-        'Authorization' => 'Basic ' . base64_encode($this->config->get('license_key') . ':' . $this->config->get('api_key')),
+        'Authorization' => 'Basic ' . base64_encode($this->config->get('api_key') . ':' . $this->config->get('license_key')),
         'Content-Type' => 'application/json',
         'x-Avalara-UID' => $this->config->get('api_uid'),
       ],
