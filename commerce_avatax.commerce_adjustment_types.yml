@@ -1,0 +1,4 @@
+sales_tax:
+  label: Sales tax
+  has_ui: true
+  weight: 100
