@@ -2,6 +2,7 @@
 
 namespace Drupal\commerce_avatax\OrderProcessor;
 
+use Drupal\commerce_avatax\ClientFactory;
 use Drupal\commerce_avatax\Resolver\ChainTaxCodeResolverInterface;
 use Drupal\commerce_order\Adjustment;
 use Drupal\commerce_order\Entity\OrderInterface;
@@ -10,7 +11,6 @@ use Drupal\commerce_price\Price;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
-use Drupal\Core\Http\ClientFactory;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use GuzzleHttp\Exception\ClientException;
 
@@ -30,13 +30,7 @@ class Avatax implements OrderProcessorInterface {
 
   public function __construct(ConfigFactoryInterface $config_factory, ClientFactory $client_factory, DateFormatterInterface $date_formatter, ChainTaxCodeResolverInterface $chain_tax_code_resolver, ModuleHandlerInterface $module_handler, LoggerChannelFactoryInterface $logger_factory) {
     $this->config = $config_factory->get('commerce_avatax.settings');
-    $this->client = $client_factory->fromOptions([
-      'headers' => [
-        'Authorization' => 'Basic ' . base64_encode($this->config->get('api_key') . ':' . $this->config->get('license_key')),
-        'Content-Type' => 'application/json',
-        'x-Avalara-UID' => $this->config->get('api_uid'),
-      ],
-    ]);
+    $this->client = $client_factory->createInstance();
     $this->dateFormatter = $date_formatter;
     $this->chainTaxCodeResolver = $chain_tax_code_resolver;
     $this->moduleHandler = $module_handler;

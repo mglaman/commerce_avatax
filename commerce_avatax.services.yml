@@ -1,7 +1,10 @@
 services:
+  commerce_avatax.client_factory:
+    class: Drupal\commerce_avatax\ClientFactory
+    arguments: ['@config.factory', '@http_client_factory']
   commerce_avatax.order_process.taxes:
     class: Drupal\commerce_avatax\OrderProcessor\Avatax
-    arguments: ['@config.factory', '@http_client_factory', '@date.formatter', '@commerce_avatax.chain_tax_code_resolver', '@module_handler', '@logger.factory']
+    arguments: ['@config.factory', '@commerce_avatax.client_factory', '@date.formatter', '@commerce_avatax.chain_tax_code_resolver', '@module_handler', '@logger.factory']
     tags:
       - { name: commerce_order.order_processor, priority: -500 }
   commerce_avatax.chain_tax_code_resolver:
