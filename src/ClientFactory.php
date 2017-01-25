@@ -34,7 +34,17 @@ class ClientFactory {
    *   The API client.
    */
   public function createInstance(array $config = []) {
+    switch ($this->config->get('api_mode')) {
+      case 'production':
+        $base_uri = 'https://rest.avatax.com/';
+        break;
+      case 'development':
+      default:
+        $base_uri = 'https://sandbox-rest.avatax.com/';
+        break;
+    }
     $default_config = [
+      'base_uri' => $base_uri,
       'headers' => [
         'Authorization' => 'Basic ' . base64_encode($this->config->get('api_key') . ':' . $this->config->get('license_key')),
         'Content-Type' => 'application/json',

@@ -97,9 +97,8 @@ class Avatax implements OrderProcessorInterface {
 
     $this->moduleHandler->alter('commerce_avatax_order_request', $request_body, $order);
 
-    // @todo check mode, this is hardcoded sandbox.
     try {
-      $response = $this->client->post('https://sandbox-rest.avatax.com/api/v2/transactions/create', [
+      $response = $this->client->post('/api/v2/transactions/create', [
         'json' => $request_body,
       ]);
 
