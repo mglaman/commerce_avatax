@@ -53,7 +53,7 @@ class Avatax implements OrderProcessorInterface {
     }
 
     $request_body = [
-      'type' => 'SalesOrder',
+      'type' => 'SalesInvoice',
       'companyCode' => $company_code,
       'date' => $this->dateFormatter->format(REQUEST_TIME, 'custom', 'c'),
       'code' => 'DC-' . $order->id(),
