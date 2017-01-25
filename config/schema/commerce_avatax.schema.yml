@@ -5,9 +5,9 @@ commerce_avatax.settings:
     api_mode:
       type: string
       label: 'API mode'
-    api_key:
+    account_number:
       type: string
-      label: 'API key'
+      label: 'Account Number'
     api_uid:
       type: string
       label: 'API UID'

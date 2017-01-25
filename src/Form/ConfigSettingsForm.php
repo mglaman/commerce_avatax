@@ -77,12 +77,12 @@ class ConfigSettingsForm extends ConfigFormBase {
       '#required' => TRUE,
       '#description' => $this->t('The mode to use when calculating taxes.'),
     ];
-    $form['configuration']['api_key'] = [
+    $form['configuration']['account_number'] = [
       '#type' => 'textfield',
-      '#title' => t('API key:'),
-      '#default_value' => $config->get('api_key'),
+      '#title' => t('Account number:'),
+      '#default_value' => $config->get('account_number'),
       '#required' => TRUE,
-      '#description' => $this->t('The API key to send to Avatax when calculating taxes.'),
+      '#description' => $this->t('The account number to use when calculating taxes.'),
     ];
     $form['configuration']['api_uid'] = [
       '#type' => 'textfield',
@@ -129,7 +129,7 @@ class ConfigSettingsForm extends ConfigFormBase {
   public function submitForm(array &$form, FormStateInterface $form_state) {
     $this->config('commerce_avatax.settings')
       ->set('api_mode', $form_state->getValue('api_mode'))
-      ->set('api_key', $form_state->getValue('api_key'))
+      ->set('account_number', $form_state->getValue('account_number'))
       ->set('api_uid', $form_state->getValue('api_uid'))
       ->set('license_key', $form_state->getValue('license_key'))
       ->set('company_code', $form_state->getValue('company_code'))

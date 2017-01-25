@@ -46,7 +46,7 @@ class ClientFactory {
     $default_config = [
       'base_uri' => $base_uri,
       'headers' => [
-        'Authorization' => 'Basic ' . base64_encode($this->config->get('api_key') . ':' . $this->config->get('license_key')),
+        'Authorization' => 'Basic ' . base64_encode($this->config->get('account_number') . ':' . $this->config->get('license_key')),
         'Content-Type' => 'application/json',
         'x-Avalara-UID' => $this->config->get('api_uid'),
       ],
