@@ -1,0 +1,4 @@
+'administer commerce_avatax':
+  title: 'Administer Commerce AvaTax'
+  description: 'Administer AvaTax settings.'
+  'restrict access': TRUE

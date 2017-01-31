@@ -4,4 +4,4 @@ commerce_avatax.config_settings:
     _form: 'Drupal\commerce_avatax\Form\ConfigSettingsForm'
     _title: 'Commerce AvaTax settings'
   requirements:
-    _permission: 'access commerce administration pages'
+    _permission: 'administer commerce_avatax'
