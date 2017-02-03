@@ -90,7 +90,7 @@ class Avatax implements OrderProcessorInterface {
       $request_body['lines'][] = [
         'number' => $item->id(),
         'quantity' => $item->getQuantity(),
-        'amount' => $item->getTotalPrice()->getNumber(),
+        'amount' => $item->getUnitPrice()->getNumber(),
         'taxCode' => $this->chainTaxCodeResolver->resolve($item->getPurchasedEntity()),
       ];
     }
@@ -103,11 +103,22 @@ class Avatax implements OrderProcessorInterface {
       ]);
 
       $body = json_decode($response->getBody()->getContents(), TRUE);
-      $order->addAdjustment(new Adjustment([
-        'type' => 'sales_tax',
-        'label' => 'Sales tax',
-        'amount' => new Price((string) $body['totalTax'], $order->getTotalPrice()->getCurrencyCode())
-      ]));
+
+      $adjustments = [];
+      $order_currency_code = $order->getTotalPrice()->getCurrencyCode();
+      foreach ($body['lines'] as $tax_adjustment) {
+        $adjustments[$tax_adjustment['lineNumber']] = $tax_adjustment['tax'];
+      }
+      foreach ($order->getItems() as $item) {
+        if (isset($adjustments[$item->id()])) {
+          $item->addAdjustment(new Adjustment([
+            'type' => 'sales_tax',
+            'label' => 'Sales tax',
+            'amount' => new Price((string) $adjustments[$item->id()], $order_currency_code),
+            'source_id' => $order->id(),
+          ]));
+        }
+      }
     }
     catch (ClientException $e) {
       // @todo port error handling from D7.
