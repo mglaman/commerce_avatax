@@ -119,6 +119,9 @@ class Avatax implements OrderProcessorInterface {
           ]));
         }
       }
+
+      // Let other modules respond to the response.
+      $this->moduleHandler->alter('commerce_avatax_order_response', $body, $order);
     }
     catch (ClientException $e) {
       // @todo port error handling from D7.
