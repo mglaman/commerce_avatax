@@ -4,14 +4,25 @@ namespace Drupal\commerce_avatax\Resolver;
 
 use Drupal\commerce\PurchasableEntityInterface;
 
+/**
+ * Provides the chain tax code resolver.
+ */
 class ChainTaxCodeResolver implements ChainTaxCodeResolverInterface {
 
   /**
+   * The tax code resolvers.
+   *
    * @var \Drupal\commerce_avatax\Resolver\TaxCodeResolverInterface[]
    */
   protected $resolvers;
 
-  public function __construct(array $resolvers =[]) {
+  /**
+   * Constructs a new ChainTaxCodeResolver object.
+   *
+   * @param \Drupal\commerce_avatax\Resolver\TaxCodeResolverInterface[] $resolvers
+   *   The tax code resolvers.
+   */
+  public function __construct(array $resolvers = []) {
     $this->resolvers = $resolvers;
   }
 
@@ -35,7 +46,7 @@ class ChainTaxCodeResolver implements ChainTaxCodeResolverInterface {
   public function resolve(PurchasableEntityInterface $entity) {
     foreach ($this->resolvers as $resolver) {
       $result = $resolver->resolve($entity);
-      if ($result ) {
+      if ($result) {
         return $result;
       }
     }

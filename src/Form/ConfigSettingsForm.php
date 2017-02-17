@@ -8,6 +8,9 @@ use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Routing\RequestContext;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
+/**
+ * Configuration form for Avatax settings.
+ */
 class ConfigSettingsForm extends ConfigFormBase {
 
   /**
@@ -72,7 +75,7 @@ class ConfigSettingsForm extends ConfigFormBase {
       '#default_value' => $config->get('api_mode'),
       '#options' => [
         'sandbox' => $this->t('Sandbox'),
-        'production' => $this->t('Production')
+        'production' => $this->t('Production'),
       ],
       '#required' => TRUE,
       '#description' => $this->t('The mode to use when calculating taxes.'),

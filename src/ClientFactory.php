@@ -6,6 +6,9 @@ use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Http\ClientFactory as CoreClientFactory;
 
+/**
+ * API Client factory.
+ */
 class ClientFactory {
 
   protected $config;
@@ -38,6 +41,7 @@ class ClientFactory {
       case 'production':
         $base_uri = 'https://rest.avatax.com/';
         break;
+
       case 'development':
       default:
         $base_uri = 'https://sandbox-rest.avatax.com/';

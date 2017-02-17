@@ -2,6 +2,9 @@
 
 namespace Drupal\commerce_avatax\Resolver;
 
+/**
+ * Defines a chain tax code resolver.
+ */
 interface ChainTaxCodeResolverInterface extends TaxCodeResolverInterface {
 
   /**
@@ -19,4 +22,5 @@ interface ChainTaxCodeResolverInterface extends TaxCodeResolverInterface {
    *   The resolvers.
    */
   public function getResolvers();
+
 }

@@ -5,6 +5,9 @@ namespace Drupal\commerce_avatax\Resolver;
 use Drupal\commerce\PurchasableEntityInterface;
 use Drupal\commerce_product\Entity\ProductVariationInterface;
 
+/**
+ * Resolves tax code based on product variation value.
+ */
 class ProductVariationTaxCodeResolver implements TaxCodeResolverInterface {
 
   /**
@@ -17,4 +20,5 @@ class ProductVariationTaxCodeResolver implements TaxCodeResolverInterface {
       }
     }
   }
+
 }

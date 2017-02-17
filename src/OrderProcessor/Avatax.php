@@ -14,20 +14,69 @@ use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use GuzzleHttp\Exception\ClientException;
 
+/**
+ * Order processor to apply Avatax tax calculation.
+ */
 class Avatax implements OrderProcessorInterface {
 
+  /**
+   * The config.
+   *
+   * @var \Drupal\Core\Config\ImmutableConfig
+   */
   protected $config;
 
+  /**
+   * The client.
+   *
+   * @var \GuzzleHttp\Client
+   */
   protected $client;
 
+  /**
+   * The date formatter.
+   *
+   * @var \Drupal\Core\Datetime\DateFormatterInterface
+   */
   protected $dateFormatter;
 
+  /**
+   * The chain tax code resolver.
+   *
+   * @var \Drupal\commerce_avatax\Resolver\ChainTaxCodeResolverInterface
+   */
   protected $chainTaxCodeResolver;
 
+  /**
+   * The module handler.
+   *
+   * @var \Drupal\Core\Extension\ModuleHandlerInterface
+   */
   protected $moduleHandler;
 
+  /**
+   * The logger.
+   *
+   * @var \Drupal\Core\Logger\LoggerChannelInterface
+   */
   protected $logger;
 
+  /**
+   * Constructs a new Avatax object.
+   *
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
+   *   The config factory.
+   * @param \Drupal\commerce_avatax\ClientFactory $client_factory
+   *   The client.
+   * @param \Drupal\Core\Datetime\DateFormatterInterface $date_formatter
+   *   The date formatter.
+   * @param \Drupal\commerce_avatax\Resolver\ChainTaxCodeResolverInterface $chain_tax_code_resolver
+   *   The chain tax code resolver.
+   * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
+   *   The module handler.
+   * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $logger_factory
+   *   The logger.
+   */
   public function __construct(ConfigFactoryInterface $config_factory, ClientFactory $client_factory, DateFormatterInterface $date_formatter, ChainTaxCodeResolverInterface $chain_tax_code_resolver, ModuleHandlerInterface $module_handler, LoggerChannelFactoryInterface $logger_factory) {
     $this->config = $config_factory->get('commerce_avatax.settings');
     $this->client = $client_factory->createInstance();
@@ -60,7 +109,7 @@ class Avatax implements OrderProcessorInterface {
       'customerCode' => $order->getEmail(),
       'currencyCode' => $order->getTotalPrice()->getCurrencyCode(),
       'addresses' => [],
-      'lines' => []
+      'lines' => [],
     ];
 
     $addresses = [];

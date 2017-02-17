@@ -4,6 +4,9 @@ namespace Drupal\commerce_avatax\Resolver;
 
 use Drupal\commerce\PurchasableEntityInterface;
 
+/**
+ * Defines interface for tax code resolvers.
+ */
 interface TaxCodeResolverInterface {
 
   /**
