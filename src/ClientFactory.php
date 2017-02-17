@@ -47,12 +47,20 @@ class ClientFactory {
         $base_uri = 'https://sandbox-rest.avatax.com/';
         break;
     }
+
+    // Specify the x-Avalara-Client header.
+    $server_machine_name = gethostname();
+    $module_info = system_get_info('module', 'commerce_avatax');
+    $version = !empty($module_info['version']) ? $module_info['version'] : '8.x-1.x';
+    $x_avalara_client = "Drupal Commerce; Version [$version]; REST; V2; [$server_machine_name]";
+
     $default_config = [
       'base_uri' => $base_uri,
       'headers' => [
         'Authorization' => 'Basic ' . base64_encode($this->config->get('account_number') . ':' . $this->config->get('license_key')),
         'Content-Type' => 'application/json',
         'x-Avalara-UID' => $this->config->get('api_uid'),
+        'x-Avalara-Client' => $x_avalara_client,
       ],
     ];
     $config = NestedArray::mergeDeep($default_config, $config);
