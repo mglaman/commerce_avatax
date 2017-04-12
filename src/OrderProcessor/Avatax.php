@@ -101,13 +101,15 @@ class Avatax implements OrderProcessorInterface {
       $company_code = $store->avatax_company_code->value;
     }
 
+    $currency_code = $order->getTotalPrice() ? $order->getTotalPrice()->getCurrencyCode() : $store->getDefaultCurrencyCode();
+
     $request_body = [
       'type' => 'SalesInvoice',
       'companyCode' => $company_code,
       'date' => $this->dateFormatter->format(REQUEST_TIME, 'custom', 'c'),
       'code' => 'DC-' . $order->id(),
       'customerCode' => $order->getEmail(),
-      'currencyCode' => $order->getTotalPrice()->getCurrencyCode(),
+      'currencyCode' => $currency_code,
       'addresses' => [],
       'lines' => [],
     ];
@@ -154,7 +156,6 @@ class Avatax implements OrderProcessorInterface {
       $body = json_decode($response->getBody()->getContents(), TRUE);
 
       $adjustments = [];
-      $order_currency_code = $order->getTotalPrice()->getCurrencyCode();
       foreach ($body['lines'] as $tax_adjustment) {
         $adjustments[$tax_adjustment['lineNumber']] = $tax_adjustment['tax'];
       }
@@ -163,7 +164,7 @@ class Avatax implements OrderProcessorInterface {
           $item->addAdjustment(new Adjustment([
             'type' => 'sales_tax',
             'label' => 'Sales tax',
-            'amount' => new Price((string) $adjustments[$item->id()], $order_currency_code),
+            'amount' => new Price((string) $adjustments[$item->id()], $currency_code),
             'source_id' => $order->id(),
           ]));
         }
